@@ -1,5 +1,5 @@
 # BaseCenter.ai — Primary System Build Document (Phase 1)
-**Document Version:** 1.0.0  
+**Document Version:** 1.1.0  
 **Status:** Approved Architecture  
 **Target Platform:** Abacus.ai Cloud Infrastructure / Next.js / FastAPI / PostgreSQL  
 **Document Purpose:** Master blueprint for all autonomous development agents and engineers building the BaseCenter.ai platform.
@@ -204,7 +204,150 @@ Accessible strictly at `sa.basecenter.ai` for `super_admin` and `staff_admin` ro
 
 ---
 
-## 6. Implementation Technical Stack
+## 6. Design & UI Reference Framework
+
+**Note:** These SaaS applications represent the general style and theme for BaseCenter.ai. The focus is on **in-app interface design patterns**, not marketing websites.
+
+### 6.1 Design System Inspirations
+
+#### Monday.com — Vibe Design System
+* **Core Philosophy:** Open-source React component library built for consistency and native platform feel.
+* **Key Patterns to Adopt:**
+  * Comprehensive design token system (colors, shadows, dimensions, typography)
+  * 50+ reusable components (buttons, popovers, navigation, inputs)
+  * Responsive action feedback (0.5-1s response times with loading indicators)
+  * Native integration patterns for settings, search bars, and filters
+  * Tooltips, hints, and banners for contextual assistance
+  * Welcome pages and onboarding for first-time module activation
+  * Light and dark mode support
+* **Technical Resources:**
+  * Vibe Design System: https://vibe.monday.com/
+  * Component Library: `@vibe/core`
+  * Figma UI Kits available for prototyping
+* **Implementation for BaseCenter.ai:**
+  * Build a similar React component library for cross-module consistency
+  * Ensure all modules share consistent interaction patterns
+  * Implement comprehensive onboarding flows for each activated module
+
+#### Trello — Kanban & Visual Task Management
+* **Core Philosophy:** Clean, column-based layout with intuitive drag-and-drop for visual workflow tracking.
+* **Key Patterns to Adopt:**
+  * Horizontal scrollable board layout with vertical columns (lists)
+  * Drag-and-drop interactivity with visual feedback (shadows, tilting during drag)
+  * Card-based content containers with hover states for secondary actions
+  * Contextual modals for detailed task views without leaving board context
+  * Real-time collaboration with presence indicators
+* **Technical Implementation:**
+  * Use libraries like `@dnd-kit/core` for drag-and-drop
+  * Card components with metadata (avatars, comments, reactions)
+  * Minimal aesthetic with hover-revealed actions
+* **Application to BaseCenter.ai:**
+  * Direct application to **Project Management module** (Kanban boards)
+  * Card-based UI patterns applicable to **Help Ticket**, **CRM Plus**, and **Data Collection** modules
+
+#### Ramp.com — Editorial Minimalism
+* **Core Philosophy:** "Black-and-white editorial" design with a single high-contrast accent color for financial actions.
+* **Key Patterns to Adopt:**
+  * Near-monochrome palette with strategic accent color (#e4f222 highlighter yellow)
+  * **Color System:**
+    * Primary Accent: Highlighter Yellow (#e4f222) for primary actions, live counters, active states
+    * Neutrals: Ink (#0c0a08) for primary text, Obsidian (#1a1919) for inverted panels, Hairline (#e5e7eb) for borders
+  * **Typography:** Single typeface (Lausanne at 400 weight), hierarchy through size and tracking
+  * **Elevation:** 1px hairline borders instead of box-shadows for card surfaces
+  * **Component Library ("Ryu"):**
+    * Semantic props (e.g., `color='destructive'` or `color='constructive'`)
+    * Constraint-based design to maintain uniformity
+    * Isolated component library decoupled from business logic
+  * **Layout:** Comfortable density with 4px base spacing unit, left-aligned within centered max-width (1200px) containers
+  * **Border Radii:** 6px (buttons/tags), 10px (inputs), 12px (wash cards), 16px (content cards)
+* **Application to BaseCenter.ai:**
+  * Apply to **Accounting** and **Invoice & Milestones** modules for financial clarity
+  * Use highlighter accent color for "money-moving" actions
+  * Build semantic component library with constraint-based design
+
+#### Attio.com — Modern Data-Driven CRM
+* **Core Philosophy:** Flexible, data-driven interface with clean aesthetics and high information density.
+* **Key Patterns to Adopt:**
+  * **Color Palette:** Signature Teal (#3ABDAF) for primary actions and focus states
+  * **Typography:** Inter typeface for high legibility
+  * **Nature Palette:** Green tones (Mint to Sage to Hunter) for data categorization
+  * **Core UI Components:**
+    * Sophisticated table grids with sortable columns, custom filters, pagination, bulk actions
+    * Side panels and modals to maintain workflow context
+    * Well-designed empty states with zero-data screens and first-use prompts
+    * Modular dashboards for analytics and metrics
+    * Interactive onboarding with progress indicators
+    * Extensive form and input patterns optimized for rapid data entry
+* **Application to BaseCenter.ai:**
+  * Direct application to **CRM Plus** module
+  * Table/grid patterns applicable to **Accounting**, **Data Collection**, and **Help Ticket** modules
+  * Side panel pattern for cross-module navigation consistency
+
+#### QuickBooks Online — Professional Accounting Dashboard
+* **Core Philosophy:** Clean, intuitive, modular dashboard with customizable widgets for financial oversight.
+* **Key Patterns to Adopt (App Interface Only):**
+  * **Widget-Based Dashboard:** Customizable layout with relocatable, add/remove widgets
+  * **Core Functionality Tabs:** Home view for shortcuts, specialized views for cash flow, reports
+  * **Visual Design:**
+    * High-contrast visuals with clean, legible typography
+    * Grid-based compositions with modular layouts
+    * Light and dark mode support (dark mode optimized for reduced eye strain)
+  * **Navigation Patterns:**
+    * Streamlined menus with reduced steps to access tools
+    * Smart search with custom filters for transactions, accounts, reports
+    * Bookmarking for frequently used actions
+  * **Mobile Consistency:** Mirror desktop experience on mobile with task-focused interfaces
+* **Note:** We are **NOT** adopting the green color from the QuickBooks marketing website. Focus is on the clean dashboard UI patterns within the app.
+* **Application to BaseCenter.ai:**
+  * Primary reference for **Accounting** module dashboard
+  * Widget customization pattern applicable to main **Dashboard** across all modules
+  * Smart search and bookmarking patterns for platform-wide navigation
+
+### 6.2 BaseCenter.ai Design System Synthesis
+
+Based on the above references, the BaseCenter.ai design system will incorporate:
+
+**Color Strategy:**
+* Primary Accent: Teal (#3ABDAF) inspired by Attio for primary actions and focus states
+* Financial Actions: Highlighter Yellow (#e4f222) inspired by Ramp for "money-moving" operations in Accounting and Invoicing modules
+* Neutrals: High-contrast grayscale palette for text and surfaces
+* Semantic Colors: `constructive` (green tones), `destructive` (red tones), `warning` (amber tones)
+
+**Typography:**
+* Primary Typeface: Inter (fallback to system fonts for performance)
+* Hierarchy through size, weight, and letter-spacing
+* Base weight: 400, Bold weight: 600-700 for emphasis
+
+**Component Library ("BaseCore"):**
+* React-based component library with TypeScript
+* Semantic prop system for maintainability
+* Constraint-based design to minimize design debt
+* Support for light/dark modes
+* Accessibility (WCAG 2.1 AA compliance)
+
+**Layout & Spacing:**
+* Base spacing unit: 4px (following 4px grid system)
+* Max content width: 1200px centered
+* Consistent border radii: 6px (small), 10px (medium), 12px (large), 16px (cards)
+* 1px hairline borders for elevation instead of heavy shadows
+
+**Interaction Patterns:**
+* Response time targets: 0.5-1s for most actions with visual feedback
+* Drag-and-drop with visual affordances (shadows, opacity, positioning feedback)
+* Contextual modals and side panels to maintain workflow context
+* Empty states with clear calls-to-action
+* Progressive onboarding with step indicators
+
+**Module-Specific Patterns:**
+* **Project Management:** Kanban boards with Trello-inspired drag-and-drop
+* **CRM Plus:** Attio-inspired data grids with advanced filtering
+* **Accounting & Invoicing:** Ramp-inspired editorial minimalism with financial action highlights
+* **All Modules:** Monday.com-inspired component consistency and onboarding flows
+* **Dashboard:** QuickBooks-inspired customizable widget system
+
+---
+
+## 7. Implementation Technical Stack
 
 * **Frontend Framework:** Next.js 14+ (App Router), React, Tailwind CSS, Lucide Icons.
 * **Backend Framework:** FastAPI (Python 3.11+) asynchronous micro-services.
