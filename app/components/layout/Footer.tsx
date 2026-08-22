@@ -1,9 +1,16 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 
 export const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
+
+  // Hide the marketing footer inside the /admin and /app portals.
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app')) return null;
 
   return (
     <footer className="bg-obsidian text-white">

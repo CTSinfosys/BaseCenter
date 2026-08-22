@@ -90,12 +90,18 @@ def create_checkout_session(
     price_id: str,
     module_id: int,
     quantity: int = 1,
+    success_path: str = "/admin/billing",
+    cancel_path: str = "/admin/billing",
 ) -> str:
-    """Create a Stripe Checkout session for a module subscription; returns the URL."""
+    """Create a Stripe Checkout session for a module subscription; returns the URL.
+
+    success_path / cancel_path let callers (e.g. the tenant portal) redirect back
+    into their own area (/app/...) instead of the default Super Admin billing page.
+    """
     client = _client(db)
     customer_id = get_or_create_customer(db, tenant)
-    success_url = f"{settings.FRONTEND_URL}/admin/billing?status=success&session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{settings.FRONTEND_URL}/admin/billing?status=cancelled"
+    success_url = f"{settings.FRONTEND_URL}{success_path}?status=success&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{settings.FRONTEND_URL}{cancel_path}?status=cancelled"
     session = client.checkout.Session.create(
         mode="subscription",
         customer=customer_id,

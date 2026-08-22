@@ -19,16 +19,34 @@ export function clearToken() {
   if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
 }
 
+// Tenant portal (Phase 1E) uses a SEPARATE token so the customer /app session
+// and the Super Admin /admin session never clobber each other.
+const TENANT_TOKEN_KEY = "bc_tenant_token";
+
+export function getTenantToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TENANT_TOKEN_KEY);
+}
+
+export function setTenantToken(token: string) {
+  if (typeof window !== "undefined") localStorage.setItem(TENANT_TOKEN_KEY, token);
+}
+
+export function clearTenantToken() {
+  if (typeof window !== "undefined") localStorage.removeItem(TENANT_TOKEN_KEY);
+}
+
 interface ApiOptions {
   method?: string;
   body?: unknown;
   auth?: boolean;
   form?: boolean;
+  tenant?: boolean;
 }
 
 export async function apiFetch<T = unknown>(
   path: string,
-  { method = "GET", body, auth = true, form = false }: ApiOptions = {}
+  { method = "GET", body, auth = true, form = false, tenant = false }: ApiOptions = {}
 ): Promise<T> {
   const headers: Record<string, string> = {};
   let payload: BodyInit | undefined;
@@ -42,7 +60,7 @@ export async function apiFetch<T = unknown>(
   }
 
   if (auth) {
-    const token = getToken();
+    const token = tenant ? getTenantToken() : getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
@@ -289,4 +307,184 @@ export interface AnalyticsOverview {
 
 export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
   return apiFetch<AnalyticsOverview>("/admin/analytics/overview");
+}
+
+
+// ===========================================================================
+// Phase 1E: Tenant self-service portal (/app)
+// ===========================================================================
+
+export interface TenantCurrentUser {
+  id: number;
+  email: string;
+  full_name: string | null;
+  is_active: boolean;
+  is_superuser: boolean;
+  role: string;
+  tenant_id: number | null;
+}
+
+export interface TenantSignupResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  tenant_id: number;
+  tenant_name: string;
+}
+
+export async function tenantSignup(payload: {
+  company_name: string;
+  full_name?: string;
+  email: string;
+  password: string;
+}): Promise<TenantSignupResponse> {
+  const data = await apiFetch<TenantSignupResponse>("/tenant/signup", {
+    method: "POST",
+    auth: false,
+    body: payload,
+  });
+  setTenantToken(data.access_token);
+  return data;
+}
+
+export async function tenantLogin(email: string, password: string): Promise<string> {
+  const data = await apiFetch<{ access_token: string }>("/tenant/login", {
+    method: "POST",
+    form: true,
+    auth: false,
+    body: { username: email, password },
+  });
+  setTenantToken(data.access_token);
+  return data.access_token;
+}
+
+export async function getTenantMe(): Promise<TenantCurrentUser> {
+  return apiFetch<TenantCurrentUser>("/tenant/me", { tenant: true });
+}
+
+export interface SeatUsage {
+  allocated: number;
+  used: number;
+  available: number;
+}
+
+export interface TenantBillingStatus {
+  stripe_configured: boolean;
+  stripe_customer_id: string | null;
+  active_paid_modules: number;
+  monthly_total_cents: number;
+}
+
+export interface ActiveModuleInfo {
+  subscription_id: number;
+  module_id: number;
+  name: string;
+  slug: string;
+  icon: string | null;
+  is_free_module: boolean;
+  status: string;
+  monthly_price: number;
+}
+
+export interface TenantDashboardData {
+  tenant_id: number;
+  tenant_name: string;
+  status: string;
+  seats: SeatUsage;
+  billing: TenantBillingStatus;
+  active_modules: ActiveModuleInfo[];
+}
+
+export async function getTenantDashboard(): Promise<TenantDashboardData> {
+  return apiFetch<TenantDashboardData>("/tenant/dashboard", { tenant: true });
+}
+
+export interface CatalogModule {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  monthly_price: number;
+  is_free_eligible: boolean;
+  is_activated: boolean;
+  subscription_status: string | null;
+  subscription_id: number | null;
+  stripe_ready: boolean;
+}
+
+export async function getTenantCatalog(): Promise<CatalogModule[]> {
+  return apiFetch<CatalogModule[]>("/tenant/modules", { tenant: true });
+}
+
+export interface ActivateModuleResponse {
+  activated: boolean;
+  requires_checkout: boolean;
+  checkout_url: string | null;
+  message: string;
+}
+
+export async function activateTenantModule(
+  moduleId: number
+): Promise<ActivateModuleResponse> {
+  return apiFetch<ActivateModuleResponse>("/tenant/modules/activate", {
+    method: "POST",
+    tenant: true,
+    body: { module_id: moduleId },
+  });
+}
+
+export async function deactivateTenantModule(
+  subscriptionId: number
+): Promise<{ success: boolean; message: string }> {
+  return apiFetch(`/tenant/modules/${subscriptionId}/deactivate`, {
+    method: "POST",
+    tenant: true,
+  });
+}
+
+export interface TenantTeamUser {
+  id: number;
+  email: string;
+  full_name: string | null;
+  role: string;
+  is_active: boolean;
+  is_owner: boolean;
+  created_at: string;
+}
+
+export interface TenantUserList {
+  users: TenantTeamUser[];
+  seats: SeatUsage;
+}
+
+export async function listTenantUsers(): Promise<TenantUserList> {
+  return apiFetch<TenantUserList>("/tenant/users", { tenant: true });
+}
+
+export async function addTenantUser(payload: {
+  email: string;
+  full_name?: string;
+  password: string;
+  role?: string;
+}): Promise<TenantTeamUser> {
+  return apiFetch<TenantTeamUser>("/tenant/users", {
+    method: "POST",
+    tenant: true,
+    body: payload,
+  });
+}
+
+export async function deactivateTenantUser(userId: number): Promise<TenantTeamUser> {
+  return apiFetch<TenantTeamUser>(`/tenant/users/${userId}/deactivate`, {
+    method: "POST",
+    tenant: true,
+  });
+}
+
+export async function activateTenantUser(userId: number): Promise<TenantTeamUser> {
+  return apiFetch<TenantTeamUser>(`/tenant/users/${userId}/activate`, {
+    method: "POST",
+    tenant: true,
+  });
 }

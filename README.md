@@ -21,6 +21,11 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
 - **Phase 1D** — Full Super Admin portal: tenant management, seat &
   subscription administration, and platform usage analytics dashboard.
   See [`docs/phase1d-completion.md`](docs/phase1d-completion.md).
+- **Phase 1E** — Tenant Admin (customer-facing) self-service portal at `/app`:
+  public signup & onboarding, tenant dashboard, self-service module activation
+  with Stripe Checkout (graceful when unconfigured), and tenant-side user & seat
+  management with seat-limit enforcement.
+  See [`docs/phase1e-completion.md`](docs/phase1e-completion.md).
 
 ## Local development
 ```bash
@@ -41,6 +46,9 @@ npm run dev                    # http://localhost:3000
 
 **Super Admin portal:** http://localhost:3000/admin
 (`admin@basecenter.ai` / `changeme123`)
+
+**Tenant portal:** http://localhost:3000/app
+(sign up at `/app/signup`, log in at `/app/login`)
 
 ## Repository layout
 ```

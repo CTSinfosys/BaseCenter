@@ -25,6 +25,7 @@ class UserInDB(UserBase):
     id: int
     is_active: bool
     is_superuser: bool
+    role: str = "member"
     tenant_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
