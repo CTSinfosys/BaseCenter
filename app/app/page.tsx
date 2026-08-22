@@ -109,7 +109,7 @@ export default function HomePage() {
             Start with one module free forever, add what you need for just $5/month each.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/register">
+            <Link href="/modules">
               <Button variant="primary" size="lg" className="text-lg px-8 py-4">
                 Get Started Free
               </Button>
@@ -263,7 +263,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-12">
-            <Link href="/register">
+            <Link href="/modules">
               <Button variant="primary" size="lg" className="text-lg px-8 py-4">
                 Start Your Free Module
               </Button>
@@ -430,7 +430,7 @@ export default function HomePage() {
             Join thousands of entrepreneurs who've simplified their business operations with BaseCenter.ai. 
             Start with any module free, forever.
           </p>
-          <Link href="/register">
+          <Link href="/modules">
             <Button variant="primary" size="lg" className="text-xl px-12 py-5">
               Start Your Free Module
             </Button>

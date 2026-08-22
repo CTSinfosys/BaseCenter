@@ -44,16 +44,11 @@ export const Navigation: React.FC = () => {
             </Link>
           </div>
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <div className="hidden md:flex items-center space-x-4">
             <Link href="/login">
-              <Button variant="ghost" size="md">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/register">
               <Button variant="primary" size="md">
-                Get Started Free
+                Login
               </Button>
             </Link>
           </div>
@@ -114,14 +109,9 @@ export const Navigation: React.FC = () => {
               About
             </Link>
             <div className="flex flex-col space-y-2 pt-4 border-t border-hairline">
-              <Link href="/login">
-                <Button variant="ghost" size="md" className="w-full">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/register">
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="primary" size="md" className="w-full">
-                  Get Started Free
+                  Login
                 </Button>
               </Link>
             </div>
