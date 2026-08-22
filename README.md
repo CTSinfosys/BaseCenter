@@ -56,6 +56,12 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   **preserves iframe embedding**, no restrictive `X-Frame-Options`), explicit
   CORS, and password-strength enforcement. Degrades gracefully when SMTP is
   unconfigured. See [`docs/phase1h-completion.md`](docs/phase1h-completion.md).
+- **Unified public login** — the public site header shows a single **Login**
+  button (`/login`). One email/password form authenticates any account and
+  routes by role: Super Admins to `/admin/dashboard`, tenant users to `/app`
+  (tokens stored exactly as before). The landing/`/modules` splash share one
+  header + footer, and in-body CTAs lead to `/modules` for module selection and
+  purchase (signup remains reachable via the purchase flow).
 - **Customizable sidebar labels** — Super Admins can rename the sidebar
   navigation items for both access levels (Super Admin and Tenant portals) from
   `/admin/settings/sidebar`. Stored as a non-secret platform setting; routes are
