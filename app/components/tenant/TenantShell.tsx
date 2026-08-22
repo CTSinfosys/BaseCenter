@@ -8,13 +8,15 @@ import {
   getTenantToken,
   getTenantMe,
   clearTenantToken,
+  getPublicSidebarLabels,
   type TenantCurrentUser,
 } from "@/lib/api";
 
+// `key` is the stable nav key used for label overrides; `label` is the default.
 const NAV = [
-  { href: "/app", label: "Dashboard", icon: "📊" },
-  { href: "/app/modules", label: "Modules", icon: "🧩" },
-  { href: "/app/team", label: "Team & Seats", icon: "👥" },
+  { href: "/app", key: "dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/app/modules", key: "modules", label: "Modules", icon: "🧩" },
+  { href: "/app/team", key: "team", label: "Team & Seats", icon: "👥" },
 ];
 
 export default function TenantShell({ children }: { children: React.ReactNode }) {
@@ -22,6 +24,14 @@ export default function TenantShell({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [user, setUser] = useState<TenantCurrentUser | null>(null);
   const [checking, setChecking] = useState(true);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Effective tenant labels — fall back to NAV defaults if the fetch fails.
+    getPublicSidebarLabels()
+      .then((cfg) => setLabels(cfg.tenant || {}))
+      .catch(() => setLabels({}));
+  }, []);
 
   useEffect(() => {
     if (!getTenantToken()) {
@@ -88,7 +98,7 @@ export default function TenantShell({ children }: { children: React.ReactNode })
                 }`}
               >
                 <span>{item.icon}</span>
-                {item.label}
+                {labels[item.key] || item.label}
               </Link>
             );
           })}

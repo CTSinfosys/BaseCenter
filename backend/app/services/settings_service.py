@@ -2,6 +2,7 @@
 Platform settings service.
 Manages key-value configuration with transparent encryption for secret values.
 """
+import json
 from sqlalchemy.orm import Session
 from app.models.setting import PlatformSetting
 from app.core.encryption import encrypt_value, decrypt_value
@@ -13,12 +14,34 @@ STRIPE_PUBLISHABLE_KEY = "stripe_publishable_key"
 STRIPE_SECRET_KEY = "stripe_secret_key"
 STRIPE_WEBHOOK_SECRET = "stripe_webhook_secret"
 STRIPE_MODE = "stripe_mode"  # "test" or "live"
+SIDEBAR_LABELS = "sidebar_labels"  # non-secret JSON of nav label overrides
 
 SETTINGS_REGISTRY = {
     STRIPE_PUBLISHABLE_KEY: {"is_secret": False, "description": "Stripe publishable key (pk_...)"},
     STRIPE_SECRET_KEY: {"is_secret": True, "description": "Stripe secret key (sk_...)"},
     STRIPE_WEBHOOK_SECRET: {"is_secret": True, "description": "Stripe webhook signing secret (whsec_...)"},
     STRIPE_MODE: {"is_secret": False, "description": "Stripe mode: test or live"},
+    SIDEBAR_LABELS: {"is_secret": False, "description": "Sidebar navigation label overrides (JSON)"},
+}
+
+# ---------------------------------------------------------------------------
+# Sidebar navigation labels (per access level, per stable nav key)
+# These are NON-secret display strings. Defaults mirror the current shells;
+# Super Admins may override any label, and clearing an override falls back
+# to the default below.
+# ---------------------------------------------------------------------------
+DEFAULT_SIDEBAR_LABELS: Dict[str, Dict[str, str]] = {
+    "admin": {
+        "dashboard": "Dashboard",
+        "tenants": "Tenants",
+        "settings": "Stripe Settings",
+        "sidebar": "Sidebar Labels",
+    },
+    "tenant": {
+        "dashboard": "Dashboard",
+        "modules": "Modules",
+        "team": "Team & Seats",
+    },
 }
 
 
@@ -102,3 +125,67 @@ def update_stripe_config(
     if mode is not None and mode != "":
         set_setting(db, STRIPE_MODE, mode)
     return get_stripe_config(db)
+
+
+
+
+def get_sidebar_labels(
+    db: Session, level: Optional[str] = None
+) -> Dict[str, Dict[str, str]]:
+    """
+    Return effective sidebar labels = defaults merged with stored overrides.
+    An override that is missing, empty, or blank falls back to the default.
+    Pass ``level`` ("admin" | "tenant") to get only that access level's labels.
+    """
+    raw = get_setting(db, SIDEBAR_LABELS)
+    overrides: Dict = {}
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                overrides = parsed
+        except (ValueError, TypeError):
+            overrides = {}
+
+    merged: Dict[str, Dict[str, str]] = {}
+    for lvl, defaults in DEFAULT_SIDEBAR_LABELS.items():
+        lvl_over = overrides.get(lvl, {})
+        if not isinstance(lvl_over, dict):
+            lvl_over = {}
+        merged[lvl] = {}
+        for key, default_label in defaults.items():
+            val = lvl_over.get(key)
+            merged[lvl][key] = (
+                val.strip() if isinstance(val, str) and val.strip() else default_label
+            )
+
+    if level is not None:
+        return merged.get(level, {})
+    return merged
+
+
+def set_sidebar_labels(
+    db: Session, overrides: Dict[str, Dict[str, str]]
+) -> Dict[str, Dict[str, str]]:
+    """
+    Persist sidebar label overrides. Only values that differ from the default
+    and are non-empty are stored; everything else resets to default. Storing
+    ``{}`` (rather than an empty string) ensures a full reset persists.
+    """
+    clean: Dict[str, Dict[str, str]] = {}
+    overrides = overrides or {}
+    for lvl, defaults in DEFAULT_SIDEBAR_LABELS.items():
+        lvl_in = overrides.get(lvl, {})
+        if not isinstance(lvl_in, dict):
+            lvl_in = {}
+        clean_lvl: Dict[str, str] = {}
+        for key, default_label in defaults.items():
+            val = lvl_in.get(key)
+            if isinstance(val, str) and val.strip() and val.strip() != default_label:
+                clean_lvl[key] = val.strip()
+        if clean_lvl:
+            clean[lvl] = clean_lvl
+
+    # Always write a non-empty JSON string so a reset ("{}") is persisted.
+    set_setting(db, SIDEBAR_LABELS, json.dumps(clean))
+    return get_sidebar_labels(db)

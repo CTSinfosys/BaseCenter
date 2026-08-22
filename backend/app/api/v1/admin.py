@@ -9,7 +9,13 @@ from typing import List
 from app.db.database import get_db
 from app.api.deps import get_current_superuser
 from app.schemas.user import User
-from app.schemas.settings import StripeConfig, StripeConfigUpdate, StripeTestResult
+from app.schemas.settings import (
+    StripeConfig,
+    StripeConfigUpdate,
+    StripeTestResult,
+    SidebarLabelsConfig,
+    SidebarLabelsUpdate,
+)
 from app.schemas.module import Module as ModuleSchema
 from app.schemas.tenant import (
     TenantCreate,
@@ -71,6 +77,44 @@ async def test_stripe_connection(
     """Test the stored Stripe secret key by calling the Stripe API."""
     result = stripe_service.test_connection(db)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Sidebar navigation labels
+# ---------------------------------------------------------------------------
+@router.get("/settings/sidebar", response_model=SidebarLabelsConfig)
+async def get_sidebar_labels(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Get effective sidebar labels (defaults merged with overrides) for all access levels."""
+    return settings_service.get_sidebar_labels(db)
+
+
+@router.put("/settings/sidebar", response_model=SidebarLabelsConfig)
+async def update_sidebar_labels(
+    payload: SidebarLabelsUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """
+    Save sidebar label overrides. Blank/missing labels fall back to defaults,
+    so clearing a field resets that item to its default label.
+    """
+    return settings_service.set_sidebar_labels(
+        db,
+        {"admin": payload.admin or {}, "tenant": payload.tenant or {}},
+    )
+
+
+@router.get("/sidebar-labels", response_model=SidebarLabelsConfig)
+async def public_sidebar_labels(db: Session = Depends(get_db)):
+    """
+    PUBLIC, lightweight endpoint returning only the effective sidebar labels
+    (no secrets). Each shell reads its own access level's labels from here so
+    navigation renders overridden labels without requiring SA auth.
+    """
+    return settings_service.get_sidebar_labels(db)
 
 
 # ---------------------------------------------------------------------------

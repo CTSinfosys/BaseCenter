@@ -26,6 +26,11 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   with Stripe Checkout (graceful when unconfigured), and tenant-side user & seat
   management with seat-limit enforcement.
   See [`docs/phase1e-completion.md`](docs/phase1e-completion.md).
+- **Customizable sidebar labels** — Super Admins can rename the sidebar
+  navigation items for both access levels (Super Admin and Tenant portals) from
+  `/admin/settings/sidebar`. Stored as a non-secret platform setting; routes are
+  unchanged and shells fall back to defaults if the label fetch fails.
+  See [`docs/sidebar-labels.md`](docs/sidebar-labels.md).
 
 ## Local development
 ```bash

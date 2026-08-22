@@ -170,6 +170,33 @@ export async function syncModulesToStripe(): Promise<{
   return apiFetch("/admin/modules/sync-stripe", { method: "POST" });
 }
 
+// ---- Sidebar navigation labels ----
+export interface SidebarLabelsConfig {
+  admin: Record<string, string>;
+  tenant: Record<string, string>;
+}
+
+// SA-protected: full config (defaults merged with overrides) for the editor.
+export async function getSidebarLabels(): Promise<SidebarLabelsConfig> {
+  return apiFetch<SidebarLabelsConfig>("/admin/settings/sidebar");
+}
+
+// SA-protected: save overrides. Blank labels reset to default server-side.
+export async function updateSidebarLabels(payload: {
+  admin?: Record<string, string>;
+  tenant?: Record<string, string>;
+}): Promise<SidebarLabelsConfig> {
+  return apiFetch<SidebarLabelsConfig>("/admin/settings/sidebar", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+// PUBLIC: effective labels only (no secrets) — used by both shells to render nav.
+export async function getPublicSidebarLabels(): Promise<SidebarLabelsConfig> {
+  return apiFetch<SidebarLabelsConfig>("/admin/sidebar-labels", { auth: false });
+}
+
 // ---- Phase 1D: Tenant management & analytics ----
 export interface TenantOwner {
   id: number;

@@ -4,12 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { getToken, getMe, clearToken, type CurrentUser } from "@/lib/api";
+import {
+  getToken,
+  getMe,
+  clearToken,
+  getPublicSidebarLabels,
+  type CurrentUser,
+} from "@/lib/api";
 
+// `key` is the stable nav key used for label overrides; `label` is the default.
 const NAV = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/admin/tenants", label: "Tenants", icon: "🏢" },
-  { href: "/admin/settings", label: "Stripe Settings", icon: "⚙️" },
+  { href: "/admin/dashboard", key: "dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/admin/tenants", key: "tenants", label: "Tenants", icon: "🏢" },
+  { href: "/admin/settings", key: "settings", label: "Stripe Settings", icon: "⚙️" },
+  { href: "/admin/settings/sidebar", key: "sidebar", label: "Sidebar Labels", icon: "🏷️" },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -17,6 +25,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [checking, setChecking] = useState(true);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Effective labels — fall back to NAV defaults if the fetch fails.
+    getPublicSidebarLabels()
+      .then((cfg) => setLabels(cfg.admin || {}))
+      .catch(() => setLabels({}));
+  }, []);
 
   useEffect(() => {
     if (!getToken()) {
@@ -64,8 +80,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {NAV.map((item) => {
-            const active =
-              pathname === item.href || pathname.startsWith(item.href + "/");
+            // Pick the most specific (longest) matching href so nested routes
+            // like /admin/settings/sidebar don't also highlight /admin/settings.
+            const activeHref = NAV.filter(
+              (i) => pathname === i.href || pathname.startsWith(i.href + "/")
+            ).sort((a, b) => b.href.length - a.href.length)[0]?.href;
+            const active = item.href === activeHref;
             return (
               <Link
                 key={item.href}
@@ -77,7 +97,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 }`}
               >
                 <span>{item.icon}</span>
-                {item.label}
+                {labels[item.key] || item.label}
               </Link>
             );
           })}

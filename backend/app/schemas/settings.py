@@ -2,7 +2,7 @@
 Schemas for platform / Stripe settings
 """
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
 
 
 class StripeConfig(BaseModel):
@@ -27,3 +27,18 @@ class StripeTestResult(BaseModel):
     message: str
     account_name: Optional[str] = None
     mode: Optional[str] = None
+
+
+class SidebarLabelsConfig(BaseModel):
+    """Effective sidebar labels (defaults merged with overrides) per access level."""
+    admin: Dict[str, str]
+    tenant: Dict[str, str]
+
+
+class SidebarLabelsUpdate(BaseModel):
+    """
+    Override payload. Any missing/blank value falls back to the default for that
+    nav key. Send an empty object to reset all labels for that access level.
+    """
+    admin: Optional[Dict[str, str]] = None
+    tenant: Optional[Dict[str, str]] = None
