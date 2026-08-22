@@ -1,0 +1,18 @@
+[Unit]
+Description=BaseCenter Next.js frontend (production)
+After=network-online.target
+Wants=network-online.target
+# /home/ubuntu mounts late at boot (nofail) — never start before project files exist.
+RequiresMountsFor=/home/ubuntu
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/github_repos/BaseCenter/app
+Environment=NODE_ENV=production
+Environment=PORT=3010
+ExecStart=/usr/bin/npm start -- --port 3010 --hostname 127.0.0.1
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

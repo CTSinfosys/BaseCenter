@@ -14,6 +14,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Use the application's configured DATABASE_URL (read from env / backend/.env)
+# so migrations target the same database the app uses. Falls back to the value
+# in alembic.ini for local dev when DATABASE_URL is unset.
+from app.core.config import settings as _app_settings
+if _app_settings.DATABASE_URL:
+    config.set_main_option("sqlalchemy.url", _app_settings.DATABASE_URL)
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 from app.db.database import Base

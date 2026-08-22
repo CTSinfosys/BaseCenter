@@ -43,7 +43,9 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "https://c0ac1c01a.na111.preview.abacusai.app",
         "https://basecenter.ai",
-        "https://www.basecenter.ai"
+        "https://www.basecenter.ai",
+        # Deployed frontend (supercomputer public hosting)
+        "https://basecenter.abacusai.cloud",
     ]
     
     # Database
