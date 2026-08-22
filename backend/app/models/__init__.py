@@ -7,6 +7,7 @@ from app.models.module import Module
 from app.models.subscription import Subscription
 from app.models.setting import PlatformSetting
 from app.models.website import Website, WebsiteBlock
+from app.models.webhook_event import WebhookEvent
 
 __all__ = [
     "User",
@@ -16,4 +17,5 @@ __all__ = [
     "PlatformSetting",
     "Website",
     "WebsiteBlock",
+    "WebhookEvent",
 ]

@@ -18,6 +18,7 @@ const NAV = [
   { href: "/app", key: "dashboard", label: "Dashboard", icon: "📊" },
   { href: "/app/modules", key: "modules", label: "Modules", icon: "🧩" },
   { href: "/app/team", key: "team", label: "Team & Seats", icon: "👥" },
+  { href: "/app/billing", key: "billing", label: "Billing", icon: "💳" },
 ];
 
 // Reusable module-nav registry: keyed by module slug. Each active module the
@@ -112,8 +113,12 @@ export default function TenantShell({ children }: { children: React.ReactNode })
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {NAV.map((item) => {
-            // Team & Seats is admin-only
-            if (item.href === "/app/team" && !isAdmin) return null;
+            // Team & Seats and Billing are admin-only
+            if (
+              (item.href === "/app/team" || item.href === "/app/billing") &&
+              !isAdmin
+            )
+              return null;
             const active =
               item.href === "/app"
                 ? pathname === "/app"

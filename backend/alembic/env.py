@@ -25,6 +25,7 @@ from app.models import (
     PlatformSetting,
     Website,
     WebsiteBlock,
+    WebhookEvent,
 )
 target_metadata = Base.metadata
 

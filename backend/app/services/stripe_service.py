@@ -120,6 +120,65 @@ def cancel_subscription(db: Session, stripe_subscription_id: str) -> bool:
     return True
 
 
+# ---------------------------------------------------------------------------
+# Phase 1G — subscription lifecycle, invoices, billing portal
+# ---------------------------------------------------------------------------
+
+# Stripe subscription status -> local Subscription.status.
+# Anything not listed keeps its own value (we store the raw Stripe status).
+_STRIPE_STATUS_MAP = {
+    "active": "active",
+    "trialing": "active",
+    "past_due": "past_due",
+    "unpaid": "past_due",
+    "canceled": "canceled",
+    "incomplete": "incomplete",
+    "incomplete_expired": "canceled",
+}
+
+
+def map_stripe_status(stripe_status: Optional[str]) -> str:
+    """Normalize a Stripe subscription status to our local status vocabulary."""
+    if not stripe_status:
+        return "active"
+    return _STRIPE_STATUS_MAP.get(stripe_status, stripe_status)
+
+
+def set_cancel_at_period_end(
+    db: Session, stripe_subscription_id: str, cancel: bool = True
+) -> Dict[str, Any]:
+    """Schedule (or unschedule) cancellation at the end of the current period.
+
+    Returns the updated Stripe subscription object. When ``cancel`` is True the
+    subscription stays ``active`` until ``current_period_end`` then flips to
+    ``canceled`` (Stripe emits ``customer.subscription.deleted``). When False it
+    reactivates a subscription that was scheduled to cancel.
+    """
+    client = _client(db)
+    return client.Subscription.modify(
+        stripe_subscription_id, cancel_at_period_end=cancel
+    )
+
+
+def list_invoices(db: Session, customer_id: str, limit: int = 24) -> list:
+    """List invoices for a Stripe customer (most recent first)."""
+    client = _client(db)
+    resp = client.Invoice.list(customer=customer_id, limit=limit)
+    return list(resp.get("data", []))
+
+
+def create_billing_portal_session(
+    db: Session, customer_id: str, return_path: str = "/app/billing"
+) -> str:
+    """Create a Stripe Billing (Customer) Portal session; returns the URL."""
+    client = _client(db)
+    session = client.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=f"{settings.FRONTEND_URL}{return_path}",
+    )
+    return session.url
+
+
 def construct_webhook_event(db: Session, payload: bytes, sig_header: str):
     """Verify and construct a Stripe webhook event using the stored webhook secret."""
     webhook_secret = settings_service.get_setting(db, settings_service.STRIPE_WEBHOOK_SECRET)

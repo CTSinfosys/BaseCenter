@@ -33,6 +33,16 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   `require_active_module(slug)` guard (403 when inactive), tenant data isolation,
   and a dynamic `MODULE_NAV` registry so active modules appear in the nav
   automatically. See [`docs/phase1f-completion.md`](docs/phase1f-completion.md).
+- **Phase 1G** — Billing lifecycle & Stripe Customer Portal: tenant-admin
+  billing page at `/app/billing` with subscription statuses, cancel
+  (cancel-at-period-end — access continues until the period ends) and reactivate
+  controls, a live read-only invoices list (hosted URL + PDF), and a "Manage
+  billing" button that opens the Stripe Customer Portal. Adds dunning via
+  expanded, idempotent webhooks (`invoice.payment_failed` → `past_due` denies
+  access; `invoice.paid` → `active` restores it; `customer.subscription.deleted`
+  → `canceled`), a past-due banner, a `cancel_at_period_end` column and a
+  `webhook_events` idempotency table. Degrades gracefully when Stripe is
+  unconfigured. See [`docs/phase1g-completion.md`](docs/phase1g-completion.md).
 - **Customizable sidebar labels** — Super Admins can rename the sidebar
   navigation items for both access levels (Super Admin and Tenant portals) from
   `/admin/settings/sidebar`. Stored as a non-secret platform setting; routes are

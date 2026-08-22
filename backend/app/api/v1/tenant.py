@@ -26,7 +26,13 @@ from app.schemas.tenant_portal import (
     TenantUserCreate,
     TenantUserList,
 )
-from app.services import tenant_portal_service, user_service
+from app.schemas.billing import (
+    BillingOverview,
+    InvoiceList,
+    PortalSessionResponse,
+    MessageResponse,
+)
+from app.services import tenant_portal_service, user_service, billing_service
 from app.core.security import create_access_token, create_refresh_token
 
 router = APIRouter()
@@ -182,6 +188,62 @@ async def deactivate_module(
 ):
     tenant = _tenant_of(db, current_user)
     return tenant_portal_service.deactivate_module(db, tenant, subscription_id)
+
+
+# ---------------------------------------------------------------------------
+# Billing lifecycle & Stripe Customer Portal (Phase 1G) — tenant-admin only
+# ---------------------------------------------------------------------------
+@router.get("/billing", response_model=BillingOverview)
+async def billing_overview(
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_tenant_admin),
+):
+    tenant = _tenant_of(db, current_user)
+    return billing_service.get_billing_overview(db, tenant)
+
+
+@router.get("/billing/invoices", response_model=InvoiceList)
+async def billing_invoices(
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_tenant_admin),
+):
+    tenant = _tenant_of(db, current_user)
+    return InvoiceList(invoices=billing_service.list_invoices(db, tenant))
+
+
+@router.post(
+    "/billing/subscriptions/{subscription_id}/cancel",
+    response_model=MessageResponse,
+)
+async def billing_cancel_subscription(
+    subscription_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_tenant_admin),
+):
+    tenant = _tenant_of(db, current_user)
+    return billing_service.cancel_subscription(db, tenant, subscription_id)
+
+
+@router.post(
+    "/billing/subscriptions/{subscription_id}/reactivate",
+    response_model=MessageResponse,
+)
+async def billing_reactivate_subscription(
+    subscription_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_tenant_admin),
+):
+    tenant = _tenant_of(db, current_user)
+    return billing_service.reactivate_subscription(db, tenant, subscription_id)
+
+
+@router.post("/billing/portal", response_model=PortalSessionResponse)
+async def billing_portal_session(
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_tenant_admin),
+):
+    tenant = _tenant_of(db, current_user)
+    return billing_service.create_portal_session(db, tenant)
 
 
 # ---------------------------------------------------------------------------

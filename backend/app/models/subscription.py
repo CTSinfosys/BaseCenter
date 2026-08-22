@@ -15,7 +15,10 @@ class Subscription(Base):
     module_id = Column(Integer, ForeignKey("modules.id"), nullable=False)
     is_free_module = Column(Boolean, default=False)  # Track if this is the free forever module
     stripe_subscription_id = Column(String, unique=True, nullable=True)
-    status = Column(String, default="active")  # active, cancelled, past_due, etc.
+    status = Column(String, default="active")  # active, past_due, canceled, incomplete
+    # True when the subscription is scheduled to cancel at period end (access
+    # continues until current_period_end, then Stripe flips it to canceled).
+    cancel_at_period_end = Column(Boolean, default=False, nullable=False)
     seats = Column(Integer, default=1, nullable=False)  # seats/quantity for this module
     current_period_start = Column(DateTime(timezone=True), nullable=True)
     current_period_end = Column(DateTime(timezone=True), nullable=True)

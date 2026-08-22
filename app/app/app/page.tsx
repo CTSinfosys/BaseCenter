@@ -42,6 +42,18 @@ export default function TenantDashboardPage() {
             </Link>
           </div>
 
+          {/* Past-due banner */}
+          {data.active_modules.some((m) => m.status === "past_due") && (
+            <div className="rounded-card border border-destructive bg-destructive-50 px-4 py-3 text-sm text-destructive">
+              <strong>Payment past due — action required.</strong> One or more of
+              your subscriptions has a failed payment.{" "}
+              <Link href="/app/billing" className="underline font-medium">
+                Go to Billing
+              </Link>{" "}
+              to update your payment method and restore access.
+            </div>
+          )}
+
           {/* Stat cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card variant="outlined">

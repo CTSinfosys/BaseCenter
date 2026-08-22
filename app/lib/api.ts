@@ -647,3 +647,78 @@ export async function reorderWebsiteBlocks(
 export async function getPublicSite(slug: string): Promise<PublicWebsite> {
   return apiFetch<PublicWebsite>(`/public/sites/${slug}`, { auth: false });
 }
+
+
+
+// ---------------------------------------------------------------------------
+// Billing lifecycle & Stripe Customer Portal (Phase 1G) — tenant portal
+// ---------------------------------------------------------------------------
+export interface BillingSubscription {
+  subscription_id: number;
+  module_id: number;
+  name: string;
+  slug: string;
+  icon: string | null;
+  is_free_module: boolean;
+  status: string;
+  monthly_price: number;
+  cancel_at_period_end: boolean;
+  current_period_end: string | null;
+  has_stripe: boolean;
+}
+
+export interface BillingOverview {
+  stripe_configured: boolean;
+  has_customer: boolean;
+  subscriptions: BillingSubscription[];
+  monthly_total_cents: number;
+  any_past_due: boolean;
+}
+
+export interface InvoiceOut {
+  id: string | null;
+  number: string | null;
+  created: string | null;
+  amount_cents: number;
+  currency: string;
+  status: string | null;
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+}
+
+export async function getTenantBilling(): Promise<BillingOverview> {
+  return apiFetch<BillingOverview>("/tenant/billing", { tenant: true });
+}
+
+export async function getTenantInvoices(): Promise<InvoiceOut[]> {
+  const res = await apiFetch<{ invoices: InvoiceOut[] }>(
+    "/tenant/billing/invoices",
+    { tenant: true }
+  );
+  return res.invoices;
+}
+
+export async function cancelTenantSubscription(
+  subscriptionId: number
+): Promise<{ success: boolean; message: string }> {
+  return apiFetch(`/tenant/billing/subscriptions/${subscriptionId}/cancel`, {
+    method: "POST",
+    tenant: true,
+  });
+}
+
+export async function reactivateTenantSubscription(
+  subscriptionId: number
+): Promise<{ success: boolean; message: string }> {
+  return apiFetch(`/tenant/billing/subscriptions/${subscriptionId}/reactivate`, {
+    method: "POST",
+    tenant: true,
+  });
+}
+
+export async function createBillingPortalSession(): Promise<{ url: string }> {
+  return apiFetch<{ url: string }>("/tenant/billing/portal", {
+    method: "POST",
+    tenant: true,
+  });
+}
