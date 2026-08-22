@@ -8,6 +8,7 @@
 
 - [Phase 1A Completion](phase1a-completion.md) — Foundation: branding, design system, Next.js frontend, landing pages.
 - [Phase 1B Completion](phase1b-completion.md) — Core Infrastructure: FastAPI backend, PostgreSQL, JWT authentication, API endpoints.
+- [Phase 1C Completion](phase1c-completion.md) — Stripe Billing & Super Admin Settings: encrypted key storage, billing API, webhooks, module seeding, admin console.
 
 ## Marketing Materials
 

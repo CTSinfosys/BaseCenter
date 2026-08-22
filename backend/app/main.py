@@ -5,7 +5,7 @@ FastAPI application entry point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import auth, users
+from app.api.v1 import auth, users, admin, modules, subscriptions, webhooks
 
 # Create FastAPI application
 app = FastAPI(
@@ -29,6 +29,10 @@ app.add_middleware(
 # Include API routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_PREFIX}/auth", tags=["authentication"])
 app.include_router(users.router, prefix=f"{settings.API_V1_PREFIX}/users", tags=["users"])
+app.include_router(admin.router, prefix=f"{settings.API_V1_PREFIX}/admin", tags=["super-admin"])
+app.include_router(modules.router, prefix=f"{settings.API_V1_PREFIX}/modules", tags=["modules"])
+app.include_router(subscriptions.router, prefix=f"{settings.API_V1_PREFIX}/subscriptions", tags=["subscriptions"])
+app.include_router(webhooks.router, prefix=f"{settings.API_V1_PREFIX}/webhooks", tags=["webhooks"])
 
 @app.get("/")
 async def root():

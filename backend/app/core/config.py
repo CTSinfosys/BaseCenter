@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Encryption key for settings stored at rest (Stripe secret keys, etc.)
+    SETTINGS_ENCRYPTION_KEY: str = os.getenv(
+        "SETTINGS_ENCRYPTION_KEY", "change-this-settings-encryption-key-in-production"
+    )
+
+    # Frontend base URL (used for Stripe checkout redirect URLs)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     
     # CORS
     ALLOWED_ORIGINS: List[str] = [
