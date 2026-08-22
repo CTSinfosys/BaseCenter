@@ -16,6 +16,7 @@ class Subscription(Base):
     is_free_module = Column(Boolean, default=False)  # Track if this is the free forever module
     stripe_subscription_id = Column(String, unique=True, nullable=True)
     status = Column(String, default="active")  # active, cancelled, past_due, etc.
+    seats = Column(Integer, default=1, nullable=False)  # seats/quantity for this module
     current_period_start = Column(DateTime(timezone=True), nullable=True)
     current_period_end = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

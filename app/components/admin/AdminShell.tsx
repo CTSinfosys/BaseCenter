@@ -7,6 +7,8 @@ import Link from "next/link";
 import { getToken, getMe, clearToken, type CurrentUser } from "@/lib/api";
 
 const NAV = [
+  { href: "/admin/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/admin/tenants", label: "Tenants", icon: "🏢" },
   { href: "/admin/settings", label: "Stripe Settings", icon: "⚙️" },
 ];
 
@@ -62,7 +64,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {NAV.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
@@ -92,7 +95,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* Content */}
       <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto p-8">{children}</div>
+        <div className="max-w-6xl mx-auto p-8">{children}</div>
       </main>
     </div>
   );

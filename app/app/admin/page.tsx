@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
     if (getToken()) {
       getMe()
         .then((u) => {
-          if (u.is_superuser) router.replace("/admin/settings");
+          if (u.is_superuser) router.replace("/admin/dashboard");
           else clearToken();
         })
         .catch(() => clearToken());
@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
         setError("This account does not have Super Admin access.");
         return;
       }
-      router.replace("/admin/settings");
+      router.replace("/admin/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

@@ -21,4 +21,6 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    tenant = relationship("Tenant", back_populates="users")
+    tenant = relationship(
+        "Tenant", back_populates="users", foreign_keys=[tenant_id]
+    )
