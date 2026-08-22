@@ -16,12 +16,28 @@ STRIPE_WEBHOOK_SECRET = "stripe_webhook_secret"
 STRIPE_MODE = "stripe_mode"  # "test" or "live"
 SIDEBAR_LABELS = "sidebar_labels"  # non-secret JSON of nav label overrides
 
+# Email / SMTP settings (Phase 1H)
+EMAIL_FROM_NAME = "email_from_name"
+EMAIL_FROM_ADDRESS = "email_from_address"
+EMAIL_SMTP_HOST = "email_smtp_host"
+EMAIL_SMTP_PORT = "email_smtp_port"
+EMAIL_SMTP_USER = "email_smtp_user"
+EMAIL_SMTP_PASSWORD = "email_smtp_password"  # secret
+EMAIL_SMTP_USE_TLS = "email_smtp_use_tls"  # "true"/"false"
+
 SETTINGS_REGISTRY = {
     STRIPE_PUBLISHABLE_KEY: {"is_secret": False, "description": "Stripe publishable key (pk_...)"},
     STRIPE_SECRET_KEY: {"is_secret": True, "description": "Stripe secret key (sk_...)"},
     STRIPE_WEBHOOK_SECRET: {"is_secret": True, "description": "Stripe webhook signing secret (whsec_...)"},
     STRIPE_MODE: {"is_secret": False, "description": "Stripe mode: test or live"},
     SIDEBAR_LABELS: {"is_secret": False, "description": "Sidebar navigation label overrides (JSON)"},
+    EMAIL_FROM_NAME: {"is_secret": False, "description": "Sender display name for outbound email"},
+    EMAIL_FROM_ADDRESS: {"is_secret": False, "description": "Sender email address (From)"},
+    EMAIL_SMTP_HOST: {"is_secret": False, "description": "SMTP server host"},
+    EMAIL_SMTP_PORT: {"is_secret": False, "description": "SMTP server port"},
+    EMAIL_SMTP_USER: {"is_secret": False, "description": "SMTP username"},
+    EMAIL_SMTP_PASSWORD: {"is_secret": True, "description": "SMTP password"},
+    EMAIL_SMTP_USE_TLS: {"is_secret": False, "description": "Use STARTTLS for SMTP (true/false)"},
 }
 
 # ---------------------------------------------------------------------------
@@ -125,6 +141,63 @@ def update_stripe_config(
     if mode is not None and mode != "":
         set_setting(db, STRIPE_MODE, mode)
     return get_stripe_config(db)
+
+
+# ---------------------------------------------------------------------------
+# Email / SMTP configuration (Phase 1H)
+# ---------------------------------------------------------------------------
+def is_email_configured(db: Session) -> bool:
+    """Email is 'configured' once we have an SMTP host and a From address."""
+    return bool(get_setting(db, EMAIL_SMTP_HOST)) and bool(get_setting(db, EMAIL_FROM_ADDRESS))
+
+
+def get_email_config(db: Session, reveal_secrets: bool = False) -> Dict[str, Optional[str]]:
+    """Return the current email configuration. Password is masked unless reveal_secrets."""
+    pw = get_setting(db, EMAIL_SMTP_PASSWORD)
+    if pw and not reveal_secrets:
+        pw_out: Optional[str] = "••••••••"
+    else:
+        pw_out = pw
+
+    use_tls = get_setting(db, EMAIL_SMTP_USE_TLS)
+    return {
+        "from_name": get_setting(db, EMAIL_FROM_NAME),
+        "from_address": get_setting(db, EMAIL_FROM_ADDRESS),
+        "smtp_host": get_setting(db, EMAIL_SMTP_HOST),
+        "smtp_port": get_setting(db, EMAIL_SMTP_PORT),
+        "smtp_user": get_setting(db, EMAIL_SMTP_USER),
+        "smtp_password": pw_out,
+        "smtp_use_tls": (use_tls if use_tls is not None else "true"),
+        "is_configured": is_email_configured(db),
+    }
+
+
+def update_email_config(
+    db: Session,
+    from_name: Optional[str] = None,
+    from_address: Optional[str] = None,
+    smtp_host: Optional[str] = None,
+    smtp_port: Optional[str] = None,
+    smtp_user: Optional[str] = None,
+    smtp_password: Optional[str] = None,
+    smtp_use_tls: Optional[str] = None,
+) -> Dict[str, Optional[str]]:
+    """Update email settings. Empty/None fields are left unchanged (per set_setting)."""
+    if from_name is not None:
+        set_setting(db, EMAIL_FROM_NAME, from_name)
+    if from_address is not None:
+        set_setting(db, EMAIL_FROM_ADDRESS, from_address)
+    if smtp_host is not None:
+        set_setting(db, EMAIL_SMTP_HOST, smtp_host)
+    if smtp_port is not None:
+        set_setting(db, EMAIL_SMTP_PORT, smtp_port)
+    if smtp_user is not None:
+        set_setting(db, EMAIL_SMTP_USER, smtp_user)
+    if smtp_password is not None:
+        set_setting(db, EMAIL_SMTP_PASSWORD, smtp_password)
+    if smtp_use_tls is not None and smtp_use_tls != "":
+        set_setting(db, EMAIL_SMTP_USE_TLS, smtp_use_tls)
+    return get_email_config(db)
 
 
 

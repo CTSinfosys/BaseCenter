@@ -23,7 +23,9 @@ export default function TenantTeamPage() {
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("member");
+  const [sendInvite, setSendInvite] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -46,14 +48,28 @@ export default function TenantTeamPage() {
     e.preventDefault();
     setError("");
     setNotice("");
+    setInviteLink("");
     setAdding(true);
     try {
-      await addTenantUser({ email, full_name: fullName || undefined, password, role });
-      setNotice(`${email} added to your team.`);
+      const created = await addTenantUser({
+        email,
+        full_name: fullName || undefined,
+        password: sendInvite ? undefined : password,
+        role,
+      });
+      if (created.invited) {
+        setNotice(
+          `Invitation sent to ${email}. They can set their own password using the link in the email.`
+        );
+        if (created.invite_link) setInviteLink(created.invite_link);
+      } else {
+        setNotice(`${email} added to your team.`);
+      }
       setEmail("");
       setFullName("");
       setPassword("");
       setRole("member");
+      setSendInvite(true);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add user");
@@ -102,7 +118,14 @@ export default function TenantTeamPage() {
 
         {notice && (
           <div className="rounded-card border border-constructive bg-constructive-50 px-4 py-3 text-sm text-ink">
-            {notice}
+            <p>{notice}</p>
+            {inviteLink && (
+              <p className="mt-2 text-xs text-neutral-600 break-all">
+                Email delivery isn&apos;t configured yet, so share this invitation link
+                directly:{" "}
+                <span className="font-mono text-secondary">{inviteLink}</span>
+              </p>
+            )}
           </div>
         )}
         {error && (
@@ -138,16 +161,6 @@ export default function TenantTeamPage() {
                 placeholder="Alex Smith"
                 disabled={seatsFull}
               />
-              <Input
-                label="Temporary password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                minLength={8}
-                required
-                disabled={seatsFull}
-              />
               <div>
                 <label className="block text-sm font-medium text-ink mb-1.5">Role</label>
                 <select
@@ -160,13 +173,37 @@ export default function TenantTeamPage() {
                   <option value="tenant_admin">Administrator</option>
                 </select>
               </div>
+              {!sendInvite && (
+                <Input
+                  label="Temporary password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters, incl. a letter & number"
+                  minLength={8}
+                  required
+                  disabled={seatsFull}
+                />
+              )}
+              <div className="sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={sendInvite}
+                    onChange={(e) => setSendInvite(e.target.checked)}
+                    disabled={seatsFull}
+                    className="rounded border-hairline text-primary focus:ring-primary"
+                  />
+                  Send an invitation email so they can set their own password
+                </label>
+              </div>
               <div className="sm:col-span-2">
                 <Button
                   type="submit"
                   variant="primary"
                   disabled={adding || seatsFull}
                 >
-                  {adding ? "Adding…" : "Add member"}
+                  {adding ? "Adding…" : sendInvite ? "Send invitation" : "Add member"}
                 </Button>
               </div>
             </form>

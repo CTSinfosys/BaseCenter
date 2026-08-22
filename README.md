@@ -43,6 +43,19 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   → `canceled`), a past-due banner, a `cancel_at_period_end` column and a
   `webhook_events` idempotency table. Degrades gracefully when Stripe is
   unconfigured. See [`docs/phase1g-completion.md`](docs/phase1g-completion.md).
+- **Phase 1H** — Hardening & production readiness: transactional email
+  (`email_service` sending via encrypted SMTP settings, or logging the link when
+  unconfigured) wired into email verification, password reset, and user
+  invitations with signed expiring tokens; new SA **Email Settings**
+  (`/admin/settings/email`, with a test send) and **Audit Log**
+  (`/admin/audit`, paginated & filterable) pages; tenant portal
+  verify-email / forgot-password / reset-password flows; a fail-safe
+  `audit_logs` trail of security-relevant actions; `slowapi` rate limiting on
+  login / signup / password-reset / test-email (env-configurable, HTTP 429);
+  and security hardening — security headers (CSP `frame-ancestors` that
+  **preserves iframe embedding**, no restrictive `X-Frame-Options`), explicit
+  CORS, and password-strength enforcement. Degrades gracefully when SMTP is
+  unconfigured. See [`docs/phase1h-completion.md`](docs/phase1h-completion.md).
 - **Customizable sidebar labels** — Super Admins can rename the sidebar
   navigation items for both access levels (Super Admin and Tenant portals) from
   `/admin/settings/sidebar`. Stored as a non-secret platform setting; routes are

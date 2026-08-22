@@ -26,6 +26,7 @@ from app.models import (
     Website,
     WebsiteBlock,
     WebhookEvent,
+    AuditLog,
 )
 target_metadata = Base.metadata
 

@@ -104,6 +104,10 @@ class TenantUser(BaseModel):
     is_active: bool
     is_owner: bool
     created_at: datetime
+    # Phase 1H — set on invite responses. invite_link is only populated when
+    # email delivery is unconfigured (so the link can be copied during local dev).
+    invited: Optional[bool] = None
+    invite_link: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -112,7 +116,9 @@ class TenantUser(BaseModel):
 class TenantUserCreate(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
-    password: str
+    # Optional (Phase 1H): when omitted, the user is invited by email and sets
+    # their own password via the invite link instead of being given one.
+    password: Optional[str] = None
     role: str = "member"
 
 

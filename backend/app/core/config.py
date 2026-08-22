@@ -18,6 +18,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Signed-token expiry (Phase 1H — email verification / password reset / invites)
+    VERIFY_TOKEN_EXPIRE_HOURS: int = int(os.getenv("VERIFY_TOKEN_EXPIRE_HOURS", "48"))
+    RESET_TOKEN_EXPIRE_HOURS: int = int(os.getenv("RESET_TOKEN_EXPIRE_HOURS", "2"))
+    INVITE_TOKEN_EXPIRE_HOURS: int = int(os.getenv("INVITE_TOKEN_EXPIRE_HOURS", "168"))
+
+    # Rate limiting (Phase 1H) — configurable, generous defaults so normal use is not blocked
+    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() in ("1", "true", "yes")
+    RATE_LIMIT_LOGIN: str = os.getenv("RATE_LIMIT_LOGIN", "10/minute")
+    RATE_LIMIT_SIGNUP: str = os.getenv("RATE_LIMIT_SIGNUP", "5/minute")
+    RATE_LIMIT_PASSWORD_RESET: str = os.getenv("RATE_LIMIT_PASSWORD_RESET", "5/minute")
+    RATE_LIMIT_TEST_EMAIL: str = os.getenv("RATE_LIMIT_TEST_EMAIL", "5/minute")
+
     # Encryption key for settings stored at rest (Stripe secret keys, etc.)
     SETTINGS_ENCRYPTION_KEY: str = os.getenv(
         "SETTINGS_ENCRYPTION_KEY", "change-this-settings-encryption-key-in-production"

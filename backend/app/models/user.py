@@ -16,6 +16,8 @@ class User(Base):
     full_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
+    # Phase 1H — set True once the user confirms their email via signed verification link
+    email_verified = Column(Boolean, default=False, nullable=False)
     # Tenant-scoped role: 'tenant_admin' (owner / can manage users & modules) or 'member'.
     # Super admins (is_superuser) are platform owners and are not tenant-scoped.
     role = Column(String, default="member", nullable=False)

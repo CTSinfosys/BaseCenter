@@ -1,14 +1,16 @@
 """
 Authentication endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.token import Token
 from app.schemas.user import User, UserCreate
-from app.services import user_service
+from app.services import user_service, audit_service
 from app.core.security import create_access_token, create_refresh_token, decode_token
+from app.core.config import settings
+from app.core.rate_limit import limiter
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
@@ -62,7 +64,9 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -85,7 +89,18 @@ async def login(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
         )
-    
+
+    # Audit Super Admin logins (Phase 1H)
+    if user.is_superuser:
+        audit_service.record(
+            db,
+            action="sa.login",
+            actor_user=user,
+            target_type="user",
+            target_id=user.id,
+            request=request,
+        )
+
     # Create tokens
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})

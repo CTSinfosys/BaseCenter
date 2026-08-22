@@ -3,11 +3,13 @@ Super Admin (SA) endpoints.
 Includes Stripe settings management (enter API keys), connection testing,
 and syncing modules to Stripe products/prices.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.db.database import get_db
 from app.api.deps import get_current_superuser
+from app.core.config import settings as app_settings
+from app.core.rate_limit import limiter
 from app.schemas.user import User
 from app.schemas.settings import (
     StripeConfig,
@@ -16,6 +18,13 @@ from app.schemas.settings import (
     SidebarLabelsConfig,
     SidebarLabelsUpdate,
 )
+from app.schemas.email_settings import (
+    EmailConfig,
+    EmailConfigUpdate,
+    EmailTestRequest,
+    EmailTestResult,
+)
+from app.schemas.audit import AuditLogList
 from app.schemas.module import Module as ModuleSchema
 from app.schemas.tenant import (
     TenantCreate,
@@ -32,6 +41,8 @@ from app.services import (
     stripe_service,
     tenant_service,
     analytics_service,
+    email_service,
+    audit_service,
 )
 from app.models.module import Module
 
@@ -53,20 +64,31 @@ async def get_stripe_settings(
 @router.put("/settings/stripe", response_model=StripeConfig)
 async def update_stripe_settings(
     payload: StripeConfigUpdate,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     """
     Update Stripe configuration. Blank/omitted fields are left unchanged,
     so masked values shown in the UI can be safely re-submitted without wiping keys.
     """
-    return settings_service.update_stripe_config(
+    result = settings_service.update_stripe_config(
         db,
         publishable_key=payload.stripe_publishable_key,
         secret_key=payload.stripe_secret_key,
         webhook_secret=payload.stripe_webhook_secret,
         mode=payload.stripe_mode,
     )
+    audit_service.record(
+        db,
+        action="settings.stripe.update",
+        actor_user=current_user,
+        target_type="settings",
+        target_id="stripe",
+        meta={"mode": result.get("stripe_mode")},
+        request=request,
+    )
+    return result
 
 
 @router.post("/settings/stripe/test", response_model=StripeTestResult)
@@ -76,6 +98,73 @@ async def test_stripe_connection(
 ):
     """Test the stored Stripe secret key by calling the Stripe API."""
     result = stripe_service.test_connection(db)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Email / SMTP settings (Phase 1H)
+# ---------------------------------------------------------------------------
+@router.get("/settings/email", response_model=EmailConfig)
+async def get_email_settings(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Get current email/SMTP configuration (password masked)."""
+    return settings_service.get_email_config(db)
+
+
+@router.put("/settings/email", response_model=EmailConfig)
+async def update_email_settings(
+    payload: EmailConfigUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """
+    Update email/SMTP configuration. Blank/omitted fields are left unchanged,
+    so the masked password can be re-submitted without wiping it.
+    """
+    result = settings_service.update_email_config(
+        db,
+        from_name=payload.from_name,
+        from_address=payload.from_address,
+        smtp_host=payload.smtp_host,
+        smtp_port=payload.smtp_port,
+        smtp_user=payload.smtp_user,
+        smtp_password=payload.smtp_password,
+        smtp_use_tls=payload.smtp_use_tls,
+    )
+    audit_service.record(
+        db,
+        action="settings.email.update",
+        actor_user=current_user,
+        target_type="settings",
+        target_id="email",
+        meta={"is_configured": result.get("is_configured")},
+        request=request,
+    )
+    return result
+
+
+@router.post("/settings/email/test", response_model=EmailTestResult)
+@limiter.limit(app_settings.RATE_LIMIT_TEST_EMAIL)
+async def send_test_email(
+    request: Request,
+    payload: EmailTestRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """Send a test email to the given address (logs the message if SMTP unconfigured)."""
+    result = email_service.send_test_email(db, str(payload.to))
+    audit_service.record(
+        db,
+        action="settings.email.test",
+        actor_user=current_user,
+        target_type="email",
+        target_id=str(payload.to),
+        meta={"sent": result.get("sent"), "logged": result.get("logged")},
+        request=request,
+    )
     return result
 
 
@@ -94,17 +183,27 @@ async def get_sidebar_labels(
 @router.put("/settings/sidebar", response_model=SidebarLabelsConfig)
 async def update_sidebar_labels(
     payload: SidebarLabelsUpdate,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     """
     Save sidebar label overrides. Blank/missing labels fall back to defaults,
     so clearing a field resets that item to its default label.
     """
-    return settings_service.set_sidebar_labels(
+    result = settings_service.set_sidebar_labels(
         db,
         {"admin": payload.admin or {}, "tenant": payload.tenant or {}},
     )
+    audit_service.record(
+        db,
+        action="settings.sidebar.update",
+        actor_user=current_user,
+        target_type="settings",
+        target_id="sidebar",
+        request=request,
+    )
+    return result
 
 
 @router.get("/sidebar-labels", response_model=SidebarLabelsConfig)
@@ -173,8 +272,9 @@ async def list_tenants(
 @router.post("/tenants", response_model=TenantDetail, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     payload: TenantCreate,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     """Create a tenant (optionally with an owner user)."""
     tenant = tenant_service.create_tenant(
@@ -185,6 +285,15 @@ async def create_tenant(
         owner_email=payload.owner_email,
         owner_full_name=payload.owner_full_name,
         owner_password=payload.owner_password,
+    )
+    audit_service.record(
+        db,
+        action="tenant.create",
+        actor_user=current_user,
+        target_type="tenant",
+        target_id=tenant.id,
+        meta={"name": payload.name, "subdomain": payload.subdomain},
+        request=request,
     )
     return tenant_service.get_tenant_detail(db, tenant.id)
 
@@ -224,24 +333,42 @@ async def update_tenant(
 @router.post("/tenants/{tenant_id}/suspend", response_model=TenantDetail)
 async def suspend_tenant(
     tenant_id: int,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     tenant = tenant_service.set_status(db, tenant_id, active=False)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    audit_service.record(
+        db,
+        action="tenant.suspend",
+        actor_user=current_user,
+        target_type="tenant",
+        target_id=tenant_id,
+        request=request,
+    )
     return tenant_service.get_tenant_detail(db, tenant_id)
 
 
 @router.post("/tenants/{tenant_id}/reactivate", response_model=TenantDetail)
 async def reactivate_tenant(
     tenant_id: int,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     tenant = tenant_service.set_status(db, tenant_id, active=True)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    audit_service.record(
+        db,
+        action="tenant.reactivate",
+        actor_user=current_user,
+        target_type="tenant",
+        target_id=tenant_id,
+        request=request,
+    )
     return tenant_service.get_tenant_detail(db, tenant_id)
 
 
@@ -249,12 +376,22 @@ async def reactivate_tenant(
 async def update_tenant_seats(
     tenant_id: int,
     payload: SeatUpdate,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     tenant = tenant_service.set_seats(db, tenant_id, payload.seats_allocated)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    audit_service.record(
+        db,
+        action="tenant.seats.update",
+        actor_user=current_user,
+        target_type="tenant",
+        target_id=tenant_id,
+        meta={"seats_allocated": payload.seats_allocated},
+        request=request,
+    )
     return tenant_service.get_tenant_detail(db, tenant_id)
 
 
@@ -262,15 +399,25 @@ async def update_tenant_seats(
 async def enable_tenant_module(
     tenant_id: int,
     module_id: int,
+    request: Request,
     payload: ModuleToggle | None = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     seats = payload.seats if payload and payload.seats else 1
     try:
         tenant_service.enable_module(db, tenant_id, module_id, seats=seats)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    audit_service.record(
+        db,
+        action="tenant.module.enable",
+        actor_user=current_user,
+        target_type="tenant",
+        target_id=tenant_id,
+        meta={"module_id": module_id, "seats": seats},
+        request=request,
+    )
     return tenant_service.get_tenant_detail(db, tenant_id)
 
 
@@ -278,8 +425,9 @@ async def enable_tenant_module(
 async def disable_tenant_module(
     tenant_id: int,
     module_id: int,
+    request: Request,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_superuser),
+    current_user: User = Depends(get_current_superuser),
 ):
     result = tenant_service.disable_module(db, tenant_id, module_id)
     if result is None:
@@ -287,6 +435,15 @@ async def disable_tenant_module(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No subscription found for that module",
         )
+    audit_service.record(
+        db,
+        action="tenant.module.disable",
+        actor_user=current_user,
+        target_type="tenant",
+        target_id=tenant_id,
+        meta={"module_id": module_id},
+        request=request,
+    )
     return tenant_service.get_tenant_detail(db, tenant_id)
 
 
@@ -300,3 +457,30 @@ async def analytics_overview(
 ):
     """Platform-wide metrics for the SA dashboard."""
     return analytics_service.overview(db)
+
+
+# ---------------------------------------------------------------------------
+# Audit log (Phase 1H)
+# ---------------------------------------------------------------------------
+@router.get("/audit", response_model=AuditLogList)
+async def list_audit_logs(
+    actor: Optional[str] = Query(None, description="Filter by actor email (substring)"),
+    action: Optional[str] = Query(None, description="Filter by action (substring)"),
+    date_from: Optional[str] = Query(None, description="ISO date (inclusive)"),
+    date_to: Optional[str] = Query(None, description="ISO date (inclusive)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Paginated, filterable audit log for Super Admins."""
+    items, total = audit_service.list_logs(
+        db,
+        actor=actor,
+        action=action,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items, "total": total, "limit": limit, "offset": offset}

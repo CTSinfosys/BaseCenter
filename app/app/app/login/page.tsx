@@ -70,6 +70,15 @@ export default function TenantLoginPage() {
                 required
               />
 
+              <div className="flex justify-end -mt-2">
+                <Link
+                  href="/app/forgot-password"
+                  className="text-sm text-secondary font-medium hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
               {error && (
                 <p className="text-sm text-destructive bg-destructive-50 rounded-medium px-3 py-2">
                   {error}

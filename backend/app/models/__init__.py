@@ -8,6 +8,7 @@ from app.models.subscription import Subscription
 from app.models.setting import PlatformSetting
 from app.models.website import Website, WebsiteBlock
 from app.models.webhook_event import WebhookEvent
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "Website",
     "WebsiteBlock",
     "WebhookEvent",
+    "AuditLog",
 ]

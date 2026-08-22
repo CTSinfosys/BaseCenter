@@ -150,6 +150,94 @@ export async function testStripeConnection(): Promise<StripeTestResult> {
   });
 }
 
+// ---- Email / SMTP settings (Phase 1H) ----
+export interface EmailConfig {
+  from_name: string | null;
+  from_address: string | null;
+  smtp_host: string | null;
+  smtp_port: string | null;
+  smtp_user: string | null;
+  smtp_password: string | null; // masked in responses
+  smtp_use_tls: string | null;
+  is_configured: boolean;
+}
+
+export async function getEmailConfig(): Promise<EmailConfig> {
+  return apiFetch<EmailConfig>("/admin/settings/email");
+}
+
+export async function updateEmailConfig(
+  payload: Partial<{
+    from_name: string;
+    from_address: string;
+    smtp_host: string;
+    smtp_port: string;
+    smtp_user: string;
+    smtp_password: string;
+    smtp_use_tls: string;
+  }>
+): Promise<EmailConfig> {
+  return apiFetch<EmailConfig>("/admin/settings/email", {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export interface EmailTestResult {
+  sent: boolean;
+  logged: boolean;
+  detail: string;
+}
+
+export async function testEmail(to: string): Promise<EmailTestResult> {
+  return apiFetch<EmailTestResult>("/admin/settings/email/test", {
+    method: "POST",
+    body: { to },
+  });
+}
+
+// ---- Audit log (Phase 1H) ----
+export interface AuditLogEntry {
+  id: number;
+  actor_user_id: number | null;
+  actor_email: string | null;
+  actor_role: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  meta: string | null;
+  ip_address: string | null;
+  created_at: string | null;
+}
+
+export interface AuditLogList {
+  items: AuditLogEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function getAuditLogs(
+  filters: Partial<{
+    actor: string;
+    action: string;
+    date_from: string;
+    date_to: string;
+    limit: number;
+    offset: number;
+  }> = {}
+): Promise<AuditLogList> {
+  const qs = new URLSearchParams();
+  if (filters.actor) qs.set("actor", filters.actor);
+  if (filters.action) qs.set("action", filters.action);
+  if (filters.date_from) qs.set("date_from", filters.date_from);
+  if (filters.date_to) qs.set("date_to", filters.date_to);
+  if (filters.limit != null) qs.set("limit", String(filters.limit));
+  if (filters.offset != null) qs.set("offset", String(filters.offset));
+  const q = qs.toString();
+  return apiFetch<AuditLogList>(`/admin/audit${q ? `?${q}` : ""}`);
+}
+
 export interface AdminModule {
   id: number;
   name: string;
@@ -478,6 +566,9 @@ export interface TenantTeamUser {
   is_active: boolean;
   is_owner: boolean;
   created_at: string;
+  // Phase 1H — populated on invite responses
+  invited?: boolean | null;
+  invite_link?: string | null;
 }
 
 export interface TenantUserList {
@@ -492,13 +583,52 @@ export async function listTenantUsers(): Promise<TenantUserList> {
 export async function addTenantUser(payload: {
   email: string;
   full_name?: string;
-  password: string;
+  // Optional (Phase 1H): omit to send an email invite instead of setting a password.
+  password?: string;
   role?: string;
 }): Promise<TenantTeamUser> {
   return apiFetch<TenantTeamUser>("/tenant/users", {
     method: "POST",
     tenant: true,
     body: payload,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1H — password reset & email verification (public tenant flows)
+// ---------------------------------------------------------------------------
+export async function requestPasswordReset(email: string): Promise<{ detail: string }> {
+  return apiFetch("/tenant/password-reset/request", {
+    method: "POST",
+    auth: false,
+    body: { email },
+  });
+}
+
+export async function confirmPasswordReset(
+  token: string,
+  newPassword: string
+): Promise<{ detail: string }> {
+  return apiFetch("/tenant/password-reset/confirm", {
+    method: "POST",
+    auth: false,
+    body: { token, new_password: newPassword },
+  });
+}
+
+export async function verifyEmail(token: string): Promise<{ detail: string }> {
+  return apiFetch("/tenant/verify-email", {
+    method: "POST",
+    auth: false,
+    body: { token },
+  });
+}
+
+export async function resendVerification(email: string): Promise<{ detail: string }> {
+  return apiFetch("/tenant/resend-verification", {
+    method: "POST",
+    auth: false,
+    body: { email },
   });
 }
 
