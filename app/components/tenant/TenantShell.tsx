@@ -9,6 +9,7 @@ import {
   getTenantMe,
   clearTenantToken,
   getPublicSidebarLabels,
+  getTenantDashboard,
   type TenantCurrentUser,
 } from "@/lib/api";
 
@@ -19,18 +20,48 @@ const NAV = [
   { href: "/app/team", key: "team", label: "Team & Seats", icon: "👥" },
 ];
 
+// Reusable module-nav registry: keyed by module slug. Each active module the
+// tenant is subscribed to contributes its nav entry dynamically. Add future
+// modules here to have them appear automatically when active.
+const MODULE_NAV: Record<
+  string,
+  { href: string; key: string; label: string; icon: string }
+> = {
+  "website-builder": {
+    href: "/app/modules/website-builder",
+    key: "website-builder",
+    label: "Website Builder",
+    icon: "🌐",
+  },
+};
+
 export default function TenantShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<TenantCurrentUser | null>(null);
   const [checking, setChecking] = useState(true);
   const [labels, setLabels] = useState<Record<string, string>>({});
+  const [moduleSlugs, setModuleSlugs] = useState<string[]>([]);
 
   useEffect(() => {
     // Effective tenant labels — fall back to NAV defaults if the fetch fails.
     getPublicSidebarLabels()
       .then((cfg) => setLabels(cfg.tenant || {}))
       .catch(() => setLabels({}));
+  }, []);
+
+  useEffect(() => {
+    // Dynamic module nav — only render entries for the tenant's active modules.
+    if (!getTenantToken()) return;
+    getTenantDashboard()
+      .then((d) =>
+        setModuleSlugs(
+          (d.active_modules || [])
+            .filter((m) => m.status === "active")
+            .map((m) => m.slug)
+        )
+      )
+      .catch(() => setModuleSlugs([]));
   }, []);
 
   useEffect(() => {
@@ -102,6 +133,29 @@ export default function TenantShell({ children }: { children: React.ReactNode })
               </Link>
             );
           })}
+
+          {/* Dynamic module nav — one entry per active module in the registry */}
+          {moduleSlugs
+            .map((slug) => MODULE_NAV[slug])
+            .filter((item): item is (typeof MODULE_NAV)[string] => Boolean(item))
+            .map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-secondary-50 text-secondary"
+                      : "text-neutral-600 hover:bg-neutral-100"
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  {labels[item.key] || item.label}
+                </Link>
+              );
+            })}
         </nav>
         <div className="p-4 border-t border-hairline">
           <p className="text-xs font-medium text-neutral-700 truncate">

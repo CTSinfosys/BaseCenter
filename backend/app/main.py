@@ -5,7 +5,17 @@ FastAPI application entry point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import auth, users, admin, modules, subscriptions, webhooks, tenant
+from app.api.v1 import (
+    auth,
+    users,
+    admin,
+    modules,
+    subscriptions,
+    webhooks,
+    tenant,
+    website_builder,
+    public,
+)
 
 # Create FastAPI application
 app = FastAPI(
@@ -34,6 +44,8 @@ app.include_router(modules.router, prefix=f"{settings.API_V1_PREFIX}/modules", t
 app.include_router(subscriptions.router, prefix=f"{settings.API_V1_PREFIX}/subscriptions", tags=["subscriptions"])
 app.include_router(webhooks.router, prefix=f"{settings.API_V1_PREFIX}/webhooks", tags=["webhooks"])
 app.include_router(tenant.router, prefix=f"{settings.API_V1_PREFIX}/tenant", tags=["tenant-portal"])
+app.include_router(website_builder.router, prefix=f"{settings.API_V1_PREFIX}/tenant/website-builder", tags=["module-website-builder"])
+app.include_router(public.router, prefix=f"{settings.API_V1_PREFIX}/public", tags=["public"])
 
 @app.get("/")
 async def root():

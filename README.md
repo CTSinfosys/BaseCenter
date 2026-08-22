@@ -26,6 +26,13 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   with Stripe Checkout (graceful when unconfigured), and tenant-side user & seat
   management with seat-limit enforcement.
   See [`docs/phase1e-completion.md`](docs/phase1e-completion.md).
+- **Phase 1F** — Website Builder module + the reusable module pattern: a
+  tenant-scoped module (`websites` + `website_blocks`) with a guarded API, an
+  editor at `/app/modules/website-builder` (create/edit/reorder/publish blocks),
+  and a public read-only preview at `/site/{slug}`. Establishes the reusable
+  `require_active_module(slug)` guard (403 when inactive), tenant data isolation,
+  and a dynamic `MODULE_NAV` registry so active modules appear in the nav
+  automatically. See [`docs/phase1f-completion.md`](docs/phase1f-completion.md).
 - **Customizable sidebar labels** — Super Admins can rename the sidebar
   navigation items for both access levels (Super Admin and Tenant portals) from
   `/admin/settings/sidebar`. Stored as a non-secret platform setting; routes are

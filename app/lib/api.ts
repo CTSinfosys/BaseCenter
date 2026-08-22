@@ -515,3 +515,135 @@ export async function activateTenantUser(userId: number): Promise<TenantTeamUser
     tenant: true,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Website Builder module (Phase 1F)
+// ---------------------------------------------------------------------------
+export type BlockType = "heading" | "text" | "image" | "button";
+
+export interface WebsiteBlock {
+  id: number;
+  website_id: number;
+  block_type: BlockType;
+  content: Record<string, unknown>;
+  position: number;
+}
+
+export interface Website {
+  id: number;
+  tenant_id: number;
+  name: string;
+  slug: string;
+  published: boolean;
+  settings: Record<string, unknown> | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface WebsiteDetail extends Website {
+  blocks: WebsiteBlock[];
+}
+
+export interface PublicWebsite {
+  name: string;
+  slug: string;
+  settings: Record<string, unknown> | null;
+  blocks: WebsiteBlock[];
+}
+
+export async function listWebsites(): Promise<Website[]> {
+  return apiFetch<Website[]>("/tenant/website-builder/websites", { tenant: true });
+}
+
+export async function createWebsite(payload: {
+  name: string;
+  slug?: string;
+  settings?: Record<string, unknown>;
+}): Promise<WebsiteDetail> {
+  return apiFetch<WebsiteDetail>("/tenant/website-builder/websites", {
+    method: "POST",
+    tenant: true,
+    body: payload,
+  });
+}
+
+export async function getWebsite(id: number): Promise<WebsiteDetail> {
+  return apiFetch<WebsiteDetail>(`/tenant/website-builder/websites/${id}`, {
+    tenant: true,
+  });
+}
+
+export async function updateWebsite(
+  id: number,
+  payload: { name?: string; slug?: string; settings?: Record<string, unknown> }
+): Promise<WebsiteDetail> {
+  return apiFetch<WebsiteDetail>(`/tenant/website-builder/websites/${id}`, {
+    method: "PUT",
+    tenant: true,
+    body: payload,
+  });
+}
+
+export async function deleteWebsite(id: number): Promise<void> {
+  await apiFetch(`/tenant/website-builder/websites/${id}`, {
+    method: "DELETE",
+    tenant: true,
+  });
+}
+
+export async function setWebsitePublished(
+  id: number,
+  published: boolean
+): Promise<WebsiteDetail> {
+  return apiFetch<WebsiteDetail>(`/tenant/website-builder/websites/${id}/publish`, {
+    method: "POST",
+    tenant: true,
+    body: { published },
+  });
+}
+
+export async function addWebsiteBlock(
+  websiteId: number,
+  payload: { block_type: BlockType; content: Record<string, unknown> }
+): Promise<WebsiteBlock> {
+  return apiFetch<WebsiteBlock>(
+    `/tenant/website-builder/websites/${websiteId}/blocks`,
+    { method: "POST", tenant: true, body: payload }
+  );
+}
+
+export async function updateWebsiteBlock(
+  websiteId: number,
+  blockId: number,
+  payload: { block_type?: BlockType; content?: Record<string, unknown> }
+): Promise<WebsiteBlock> {
+  return apiFetch<WebsiteBlock>(
+    `/tenant/website-builder/websites/${websiteId}/blocks/${blockId}`,
+    { method: "PUT", tenant: true, body: payload }
+  );
+}
+
+export async function deleteWebsiteBlock(
+  websiteId: number,
+  blockId: number
+): Promise<void> {
+  await apiFetch(
+    `/tenant/website-builder/websites/${websiteId}/blocks/${blockId}`,
+    { method: "DELETE", tenant: true }
+  );
+}
+
+export async function reorderWebsiteBlocks(
+  websiteId: number,
+  items: { id: number; position: number }[]
+): Promise<WebsiteBlock[]> {
+  return apiFetch<WebsiteBlock[]>(
+    `/tenant/website-builder/websites/${websiteId}/blocks/reorder`,
+    { method: "POST", tenant: true, body: { items } }
+  );
+}
+
+// Public (no auth) — published sites only.
+export async function getPublicSite(slug: string): Promise<PublicWebsite> {
+  return apiFetch<PublicWebsite>(`/public/sites/${slug}`, { auth: false });
+}

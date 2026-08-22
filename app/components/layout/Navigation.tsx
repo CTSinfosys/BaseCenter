@@ -11,7 +11,7 @@ export const Navigation: React.FC = () => {
   const pathname = usePathname();
 
   // The Super Admin (/admin) and Tenant (/app) portals render their own shells.
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app')) return null;
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app') || pathname?.startsWith('/site')) return null;
 
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-hairline">

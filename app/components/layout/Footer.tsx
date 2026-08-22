@@ -10,7 +10,7 @@ export const Footer: React.FC = () => {
   const pathname = usePathname();
 
   // Hide the marketing footer inside the /admin and /app portals.
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app')) return null;
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app') || pathname?.startsWith('/site')) return null;
 
   return (
     <footer className="bg-obsidian text-white">
