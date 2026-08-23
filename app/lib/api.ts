@@ -285,6 +285,91 @@ export async function getPublicSidebarLabels(): Promise<SidebarLabelsConfig> {
   return apiFetch<SidebarLabelsConfig>("/admin/sidebar-labels", { auth: false });
 }
 
+// ---- Public module catalog ----
+export interface PublicModule {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  monthly_price: number; // cents
+  is_active: boolean;
+  is_free_eligible: boolean;
+  display_order: number;
+}
+
+export async function getPublicModules(): Promise<PublicModule[]> {
+  return apiFetch<PublicModule[]>("/modules", { auth: false });
+}
+
+// ---- Phase 2A: Theming ----
+export type ThemeScope = "website" | "splash" | "app";
+
+export type ThemeTokens = Record<string, unknown>;
+
+export interface Theme {
+  id: number;
+  scope: ThemeScope;
+  name: string;
+  is_default: boolean;
+  tokens: ThemeTokens;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ActiveTheme {
+  scope: string;
+  tokens: ThemeTokens;
+}
+
+// PUBLIC: active (default) theme tokens for a scope — applied live by ThemeManager.
+export async function getActiveTheme(scope: ThemeScope): Promise<ActiveTheme> {
+  return apiFetch<ActiveTheme>(`/themes/active?scope=${scope}`, { auth: false });
+}
+
+// SA-protected theme CRUD.
+export async function listThemes(scope: ThemeScope): Promise<Theme[]> {
+  return apiFetch<Theme[]>(`/admin/themes?scope=${scope}`);
+}
+
+export async function getTheme(id: number): Promise<Theme> {
+  return apiFetch<Theme>(`/admin/themes/${id}`);
+}
+
+export async function createTheme(payload: {
+  scope: ThemeScope;
+  name: string;
+  tokens: ThemeTokens;
+  is_default?: boolean;
+}): Promise<Theme> {
+  return apiFetch<Theme>("/admin/themes", { method: "POST", body: payload });
+}
+
+export async function updateTheme(
+  id: number,
+  payload: { name?: string; tokens?: ThemeTokens }
+): Promise<Theme> {
+  return apiFetch<Theme>(`/admin/themes/${id}`, { method: "PUT", body: payload });
+}
+
+export async function deleteTheme(id: number): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/admin/themes/${id}`, { method: "DELETE" });
+}
+
+export async function duplicateTheme(
+  id: number,
+  name?: string
+): Promise<Theme> {
+  return apiFetch<Theme>(`/admin/themes/${id}/duplicate`, {
+    method: "POST",
+    body: { name },
+  });
+}
+
+export async function setDefaultTheme(id: number): Promise<Theme> {
+  return apiFetch<Theme>(`/admin/themes/${id}/set-default`, { method: "POST" });
+}
+
 // ---- Phase 1D: Tenant management & analytics ----
 export interface TenantOwner {
   id: number;

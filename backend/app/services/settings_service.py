@@ -51,7 +51,10 @@ DEFAULT_SIDEBAR_LABELS: Dict[str, Dict[str, str]] = {
         "dashboard": "Dashboard",
         "tenants": "Tenants",
         "settings": "Stripe Settings",
+        "email": "Email Settings",
         "sidebar": "Sidebar Labels",
+        "appearance": "Appearance",
+        "audit": "Audit Log",
     },
     "tenant": {
         "dashboard": "Dashboard",

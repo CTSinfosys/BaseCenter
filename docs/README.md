@@ -9,6 +9,7 @@
 - [Phase 1A Completion](phase1a-completion.md) — Foundation: branding, design system, Next.js frontend, landing pages.
 - [Phase 1B Completion](phase1b-completion.md) — Core Infrastructure: FastAPI backend, PostgreSQL, JWT authentication, API endpoints.
 - [Phase 1C Completion](phase1c-completion.md) — Stripe Billing & Super Admin Settings: encrypted key storage, billing API, webhooks, module seeding, admin console.
+- [Phase 2A Theming](phase2a-theming.md) — DB-driven, Super Admin managed theming applied live via CSS variables: three independent scopes (website, splash, app) with full CRUD, a JSON token model, `/admin/appearance` editor, public active-theme endpoint, and a rebuilt `/modules` grid.
 
 ## Marketing Materials
 

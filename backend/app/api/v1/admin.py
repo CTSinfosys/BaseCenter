@@ -43,6 +43,14 @@ from app.services import (
     analytics_service,
     email_service,
     audit_service,
+    theme_service,
+)
+from app.services.theme_service import ThemeError
+from app.schemas.theme import (
+    ThemeOut,
+    ThemeCreate,
+    ThemeUpdate,
+    ThemeDuplicate,
 )
 from app.models.module import Module
 
@@ -214,6 +222,165 @@ async def public_sidebar_labels(db: Session = Depends(get_db)):
     navigation renders overridden labels without requiring SA auth.
     """
     return settings_service.get_sidebar_labels(db)
+
+
+# ---------------------------------------------------------------------------
+# Theming (Phase 2A) — SA-managed themes for website / splash / app scopes
+# ---------------------------------------------------------------------------
+@router.get("/themes", response_model=List[ThemeOut])
+async def list_themes_admin(
+    scope: str = Query(..., description="website | splash | app"),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    try:
+        return theme_service.list_themes(db, scope)
+    except ThemeError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/themes", response_model=ThemeOut, status_code=status.HTTP_201_CREATED)
+async def create_theme_admin(
+    payload: ThemeCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        theme = theme_service.create_theme(
+            db,
+            scope=payload.scope,
+            name=payload.name,
+            tokens=payload.tokens,
+            is_default=payload.is_default,
+        )
+    except ThemeError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="theme.create",
+        actor_user=current_user,
+        target_type="theme",
+        target_id=str(theme.id),
+        meta={"scope": theme.scope, "name": theme.name},
+        request=request,
+    )
+    return theme
+
+
+@router.get("/themes/{theme_id}", response_model=ThemeOut)
+async def get_theme_admin(
+    theme_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    theme = theme_service.get_theme(db, theme_id)
+    if not theme:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Theme not found")
+    return theme
+
+
+@router.put("/themes/{theme_id}", response_model=ThemeOut)
+async def update_theme_admin(
+    theme_id: int,
+    payload: ThemeUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    theme = theme_service.get_theme(db, theme_id)
+    if not theme:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Theme not found")
+    try:
+        theme = theme_service.update_theme(
+            db, theme, name=payload.name, tokens=payload.tokens
+        )
+    except ThemeError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="theme.update",
+        actor_user=current_user,
+        target_type="theme",
+        target_id=str(theme.id),
+        meta={"scope": theme.scope, "name": theme.name},
+        request=request,
+    )
+    return theme
+
+
+@router.delete("/themes/{theme_id}", response_model=MessageResponse)
+async def delete_theme_admin(
+    theme_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    theme = theme_service.get_theme(db, theme_id)
+    if not theme:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Theme not found")
+    scope, name = theme.scope, theme.name
+    try:
+        theme_service.delete_theme(db, theme)
+    except ThemeError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="theme.delete",
+        actor_user=current_user,
+        target_type="theme",
+        target_id=str(theme_id),
+        meta={"scope": scope, "name": name},
+        request=request,
+    )
+    return MessageResponse(success=True, message="Theme deleted")
+
+
+@router.post("/themes/{theme_id}/duplicate", response_model=ThemeOut, status_code=status.HTTP_201_CREATED)
+async def duplicate_theme_admin(
+    theme_id: int,
+    payload: ThemeDuplicate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    theme = theme_service.get_theme(db, theme_id)
+    if not theme:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Theme not found")
+    copy = theme_service.duplicate_theme(db, theme, new_name=payload.name)
+    audit_service.record(
+        db,
+        action="theme.duplicate",
+        actor_user=current_user,
+        target_type="theme",
+        target_id=str(copy.id),
+        meta={"scope": copy.scope, "name": copy.name, "source_id": theme_id},
+        request=request,
+    )
+    return copy
+
+
+@router.post("/themes/{theme_id}/set-default", response_model=ThemeOut)
+async def set_default_theme_admin(
+    theme_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    theme = theme_service.get_theme(db, theme_id)
+    if not theme:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Theme not found")
+    theme = theme_service.set_default(db, theme)
+    audit_service.record(
+        db,
+        action="theme.set_default",
+        actor_user=current_user,
+        target_type="theme",
+        target_id=str(theme.id),
+        meta={"scope": theme.scope, "name": theme.name},
+        request=request,
+    )
+    return theme
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ from app.models.setting import PlatformSetting
 from app.models.website import Website, WebsiteBlock
 from app.models.webhook_event import WebhookEvent
 from app.models.audit_log import AuditLog
+from app.models.theme import Theme
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "WebsiteBlock",
     "WebhookEvent",
     "AuditLog",
+    "Theme",
 ]

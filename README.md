@@ -67,6 +67,17 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   `/admin/settings/sidebar`. Stored as a non-secret platform setting; routes are
   unchanged and shells fall back to defaults if the label fetch fails.
   See [`docs/sidebar-labels.md`](docs/sidebar-labels.md).
+- **Phase 2A** — DB-driven theming system, Super Admin managed and applied live
+  (no redeploy) via CSS variables. Three independent theme **scopes** — public
+  **website**, intro **splash**, and internal **app** — each with full CRUD, a
+  flexible JSON token model (colors, typography, shape & density, logo), one
+  active default per scope, and guarded actions (the default can't be deleted).
+  SA editor at `/admin/appearance` (three tabs with color pickers, typography,
+  shape controls and a live preview); a `ThemeManager` client resolves the scope
+  from the route and applies the active theme's tokens to the document, with a
+  public `GET /api/v1/themes/active?scope=` endpoint and graceful fallback. Ships
+  a FreshBooks-style default palette and rebuilds `/modules` as a responsive grid
+  of all modules. See [`docs/phase2a-theming.md`](docs/phase2a-theming.md).
 
 ## Local development
 ```bash

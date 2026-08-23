@@ -1,34 +1,44 @@
 @import "tailwindcss";
 
-/* BaseCenter.ai Design System v2.0 - Blue/Violet Palette */
+/* ==========================================================================
+   BaseCenter.ai Design System v3.0 — DB-driven theming (Phase 2A)
+
+   These :root values are the baked-in "BaseCenter Default" (FreshBooks-style)
+   baseline. They are also the graceful fallback when the live theme cannot be
+   fetched. At runtime the ThemeManager overrides these same custom properties
+   on <html> from the active theme's tokens, so every utility updates live
+   (no redeploy needed to switch themes).
+   ========================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #0c0a08;
-  
-  /* Primary - Blue */
-  --primary: #4f7fff;
-  --primary-50: #eef2ff;
-  --primary-100: #dce5ff;
-  --primary-500: #3d5fcc;
-  --primary-700: #2a4399;
-  
-  /* Secondary - Violet */
-  --secondary: #7b68ee;
-  --secondary-50: #f3f0ff;
-  --secondary-100: #e7e1ff;
-  --secondary-500: #6a5acd;
-  --secondary-700: #483d8b;
-  
-  /* Financial - Highlighter Yellow */
-  --financial: #e4f222;
-  --financial-50: #fdfde5;
-  --financial-500: #e4f222;
-  
+  --background: #ffffff;      /* cards, nav, sidebar surfaces */
+  --foreground: #0a0a0a;      /* default text */
+  --page-bg: #f6f7f9;         /* app/page backdrop */
+  --surface-muted: #eef1f5;   /* subtle fills / hover */
+
+  /* Primary — Science Blue */
+  --primary: #0075dd;
+  --primary-50: #e6f2fc;
+  --primary-100: #cce4f9;
+  --primary-500: #005fb3;     /* hover */
+  --primary-700: #00457f;     /* darker */
+
+  /* Secondary — deep navy */
+  --secondary: #0a2540;
+  --secondary-50: #eef1f5;
+  --secondary-100: #dfe4ec;
+  --secondary-500: #081b30;
+  --secondary-700: #05121f;
+
+  /* Financial / accent */
+  --financial: #00a870;
+  --financial-50: #e6f6f0;
+  --financial-500: #00875a;
+
   /* Neutrals */
-  --ink: #0c0a08;
-  --obsidian: #1a1919;
-  --hairline: #e5e7eb;
-  
+  --ink: #0a0a0a;
+  --obsidian: #0a2540;
+  --hairline: #e3e7ed;
+
   /* Semantic Colors */
   --constructive: #10b981;
   --constructive-50: #ecfdf5;
@@ -36,6 +46,18 @@
   --destructive-50: #fef2f2;
   --warning: #f59e0b;
   --warning-50: #fffbeb;
+
+  /* Typography (overridden live by ThemeManager) */
+  --font-heading: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-size-base: 16px;
+  --heading-weight: 700;
+  --body-weight: 400;
+
+  /* Shape (base radius scaled below) */
+  --radius-base: 10px;
+  --button-radius: 8px;
+  --button-text-transform: none;
 }
 
 @theme inline {
@@ -64,42 +86,43 @@
   --color-destructive-50: var(--destructive-50);
   --color-warning: var(--warning);
   --color-warning-50: var(--warning-50);
-  
+
+  /* Extra surface tokens usable as bg-page / bg-surface-muted */
+  --color-page: var(--page-bg);
+  --color-surface-muted: var(--surface-muted);
+
   /* Typography */
-  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  
-  /* Border Radius */
+  --font-family-sans: var(--font-body);
+
+  /* Border Radius (scaled from --radius-base by ThemeManager) */
   --radius-small: 6px;
   --radius-medium: 10px;
   --radius-large: 12px;
   --radius-card: 16px;
-  
+
   /* Spacing */
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
-  
+
   /* Max Width */
   --max-width-content: 1200px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 @layer base {
   * {
     @apply border-hairline;
   }
-  
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    font-size: var(--font-size-base);
+    font-weight: var(--body-weight);
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-sans;
+    font-family: var(--font-heading);
+    font-weight: var(--heading-weight);
   }
 }
 

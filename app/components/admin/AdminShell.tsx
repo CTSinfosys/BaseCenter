@@ -19,6 +19,7 @@ const NAV = [
   { href: "/admin/settings", key: "settings", label: "Stripe Settings", icon: "⚙️" },
   { href: "/admin/settings/email", key: "email", label: "Email Settings", icon: "✉️" },
   { href: "/admin/settings/sidebar", key: "sidebar", label: "Sidebar Labels", icon: "🏷️" },
+  { href: "/admin/appearance", key: "appearance", label: "Appearance", icon: "🎨" },
   { href: "/admin/audit", key: "audit", label: "Audit Log", icon: "📋" },
 ];
 
@@ -73,7 +74,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen flex bg-neutral-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-hairline flex flex-col">
+      <aside className="w-64 bg-background border-r border-hairline flex flex-col">
         <div className="p-6 border-b border-hairline">
           <Image src="/logo-horizontal.png" alt="BaseCenter.ai" width={170} height={46} />
           <p className="text-xs text-neutral-400 mt-2 font-medium tracking-wide uppercase">

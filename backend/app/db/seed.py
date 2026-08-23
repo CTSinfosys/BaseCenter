@@ -97,6 +97,9 @@ def main():
     try:
         seed_modules(db)
         seed_superadmin(db)
+        from app.services.theme_service import seed_themes
+        created = seed_themes(db)
+        print(f"Seeded {created} theme(s).")
     finally:
         db.close()
 
