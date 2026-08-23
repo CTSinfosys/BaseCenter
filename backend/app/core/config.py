@@ -37,6 +37,13 @@ class Settings(BaseSettings):
 
     # Frontend base URL (used for Stripe checkout redirect URLs)
     FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+    # Media uploads (Phase 2B — lightweight CMS image uploads).
+    # Files are stored on local disk (user-data storage is null → no S3) and
+    # served publicly by nginx under MEDIA_PUBLIC_BASE + "/media/<file>".
+    MEDIA_UPLOAD_DIR: str = os.getenv("MEDIA_UPLOAD_DIR", "/home/ubuntu/basecenter_uploads/media")
+    MEDIA_PUBLIC_BASE: str = os.getenv("MEDIA_PUBLIC_BASE", "https://basecenter-api.abacusai.cloud")
+    MEDIA_MAX_BYTES: int = int(os.getenv("MEDIA_MAX_BYTES", str(5 * 1024 * 1024)))
     
     # CORS
     ALLOWED_ORIGINS: List[str] = [

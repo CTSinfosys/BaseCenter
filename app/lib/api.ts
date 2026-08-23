@@ -937,3 +937,135 @@ export async function createBillingPortalSession(): Promise<{ url: string }> {
     tenant: true,
   });
 }
+
+
+
+// ============================================================================
+// Phase 2B: Content editor (lightweight CMS)
+// ============================================================================
+export type ContentPage = "website" | "splash";
+
+export interface PageSection {
+  id: number;
+  page: ContentPage;
+  type: string;
+  position: number;
+  is_visible: boolean;
+  content: Record<string, unknown>;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface PublicSection {
+  id: number;
+  type: string;
+  content: Record<string, unknown>;
+}
+
+export interface SectionTypeInfo {
+  type: string;
+  label: string;
+  description: string;
+}
+
+export interface MediaUpload {
+  url: string;
+  filename: string;
+  size: number;
+  content_type: string;
+}
+
+// PUBLIC: visible, ordered sections for a managed page (rendered on / and /modules).
+export async function getPublicContent(page: ContentPage): Promise<PublicSection[]> {
+  return apiFetch<PublicSection[]>(`/content/${page}`, { auth: false });
+}
+
+// SA-protected content CRUD.
+export async function getSectionTypes(): Promise<SectionTypeInfo[]> {
+  return apiFetch<SectionTypeInfo[]>("/admin/content/section-types");
+}
+
+export async function getAdminContent(page: ContentPage): Promise<PageSection[]> {
+  return apiFetch<PageSection[]>(`/admin/content/${page}`);
+}
+
+export async function addSection(
+  page: ContentPage,
+  type: string,
+  content?: Record<string, unknown>
+): Promise<PageSection> {
+  return apiFetch<PageSection>(`/admin/content/${page}/sections`, {
+    method: "POST",
+    body: { type, content: content ?? null },
+  });
+}
+
+export async function updateSection(
+  id: number,
+  content: Record<string, unknown>
+): Promise<PageSection> {
+  return apiFetch<PageSection>(`/admin/content/sections/${id}`, {
+    method: "PUT",
+    body: { content },
+  });
+}
+
+export async function setSectionVisibility(
+  id: number,
+  is_visible: boolean
+): Promise<PageSection> {
+  return apiFetch<PageSection>(`/admin/content/sections/${id}/visibility`, {
+    method: "PATCH",
+    body: { is_visible },
+  });
+}
+
+export async function duplicateSection(id: number): Promise<PageSection> {
+  return apiFetch<PageSection>(`/admin/content/sections/${id}/duplicate`, {
+    method: "POST",
+  });
+}
+
+export async function deleteSection(
+  id: number
+): Promise<{ success: boolean; message: string }> {
+  return apiFetch<{ success: boolean; message: string }>(
+    `/admin/content/sections/${id}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function reorderSections(
+  page: ContentPage,
+  section_ids: number[]
+): Promise<PageSection[]> {
+  return apiFetch<PageSection[]>(`/admin/content/${page}/reorder`, {
+    method: "PUT",
+    body: { section_ids },
+  });
+}
+
+// Multipart image upload — do NOT set Content-Type (browser sets the boundary).
+export async function uploadMedia(file: File): Promise<MediaUpload> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${API_BASE_URL}/admin/media`, {
+    method: "POST",
+    headers,
+    body: fd,
+  });
+  if (!res.ok) {
+    let detail = `Upload failed (${res.status})`;
+    try {
+      const data = await res.json();
+      detail = data.detail || detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  return (await res.json()) as MediaUpload;
+}

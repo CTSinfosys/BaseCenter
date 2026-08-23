@@ -20,6 +20,7 @@ const NAV = [
   { href: "/admin/settings/email", key: "email", label: "Email Settings", icon: "✉️" },
   { href: "/admin/settings/sidebar", key: "sidebar", label: "Sidebar Labels", icon: "🏷️" },
   { href: "/admin/appearance", key: "appearance", label: "Appearance", icon: "🎨" },
+  { href: "/admin/content", key: "content", label: "Content", icon: "📝" },
   { href: "/admin/audit", key: "audit", label: "Audit Log", icon: "📋" },
 ];
 

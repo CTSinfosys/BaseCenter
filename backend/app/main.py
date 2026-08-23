@@ -21,6 +21,7 @@ from app.api.v1 import (
     website_builder,
     public,
     themes,
+    content,
 )
 
 # Ensure our own loggers (email links, audit) surface at INFO alongside uvicorn.
@@ -87,6 +88,7 @@ app.include_router(tenant.router, prefix=f"{settings.API_V1_PREFIX}/tenant", tag
 app.include_router(website_builder.router, prefix=f"{settings.API_V1_PREFIX}/tenant/website-builder", tags=["module-website-builder"])
 app.include_router(public.router, prefix=f"{settings.API_V1_PREFIX}/public", tags=["public"])
 app.include_router(themes.router, prefix=f"{settings.API_V1_PREFIX}/themes", tags=["themes"])
+app.include_router(content.router, prefix=f"{settings.API_V1_PREFIX}/content", tags=["content"])
 
 @app.get("/")
 async def root():

@@ -78,6 +78,16 @@ Blue `#4F7FFF` (primary) · Violet `#7B68EE` (secondary) · Yellow `#E4F222`
   public `GET /api/v1/themes/active?scope=` endpoint and graceful fallback. Ships
   a FreshBooks-style default palette and rebuilds `/modules` as a responsive grid
   of all modules. See [`docs/phase2a-theming.md`](docs/phase2a-theming.md).
+- **Phase 2B** — DB-driven content / CMS, Super Admin managed and applied live
+  (no redeploy). Both public surfaces — the marketing site (`/`) and the intro
+  **splash** (`/modules`) — render their sections from a `page_sections` model
+  (eleven section types, JSON content blob) seeded idempotently from the current
+  live copy. SA editor at `/admin/content` (two tabs) with drag-and-drop
+  reorder, show/hide, add, duplicate, delete and typed edit forms, plus
+  drag-and-drop **image upload** (validated, 5 MB cap, served from
+  `/media/`). Public `GET /api/v1/content/{page}` endpoint with baked-in
+  fallback so pages are never blank.
+  See [`docs/phase2b-content-editor.md`](docs/phase2b-content-editor.md).
 
 ## Local development
 ```bash

@@ -3,7 +3,7 @@ Super Admin (SA) endpoints.
 Includes Stripe settings management (enter API keys), connection testing,
 and syncing modules to Stripe products/prices.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.database import get_db
@@ -44,13 +44,26 @@ from app.services import (
     email_service,
     audit_service,
     theme_service,
+    content_service,
+    media_service,
 )
 from app.services.theme_service import ThemeError
+from app.services.content_service import ContentError
+from app.services.media_service import MediaError
 from app.schemas.theme import (
     ThemeOut,
     ThemeCreate,
     ThemeUpdate,
     ThemeDuplicate,
+)
+from app.schemas.content import (
+    SectionOut,
+    SectionCreate,
+    SectionUpdate,
+    VisibilityUpdate,
+    ReorderRequest,
+    SectionTypeInfo,
+    MediaUploadOut,
 )
 from app.models.module import Module
 
@@ -651,3 +664,242 @@ async def list_audit_logs(
         offset=offset,
     )
     return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+
+# ---------------------------------------------------------------------------
+# Content editor (Phase 2B — lightweight CMS)
+# ---------------------------------------------------------------------------
+@router.get("/content/section-types", response_model=List[SectionTypeInfo])
+async def list_section_types(
+    _: User = Depends(get_current_superuser),
+):
+    """Section type metadata for the editor's 'Add section' picker."""
+    return content_service.SECTION_TYPE_INFO
+
+
+@router.get("/content/{page}", response_model=List[SectionOut])
+async def list_content_sections(
+    page: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """All sections (including hidden), ordered — for the editor."""
+    try:
+        return content_service.list_sections(db, page)
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/content/{page}/sections", response_model=SectionOut, status_code=status.HTTP_201_CREATED)
+async def create_content_section(
+    page: str,
+    payload: SectionCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        section = content_service.create_section(
+            db,
+            page=page,
+            section_type=payload.type,
+            content=payload.content,
+            is_visible=payload.is_visible,
+            position=payload.position,
+        )
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="content.section.create",
+        actor_user=current_user,
+        target_type="page_section",
+        target_id=str(section.id),
+        meta={"page": page, "type": section.type},
+        request=request,
+    )
+    return section
+
+
+@router.put("/content/sections/{section_id}", response_model=SectionOut)
+async def update_content_section(
+    section_id: int,
+    payload: SectionUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        section = content_service.update_section(
+            db,
+            section_id=section_id,
+            content=payload.content,
+            section_type=payload.type,
+        )
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="content.section.update",
+        actor_user=current_user,
+        target_type="page_section",
+        target_id=str(section.id),
+        meta={"page": section.page, "type": section.type},
+        request=request,
+    )
+    return section
+
+
+@router.patch("/content/sections/{section_id}/visibility", response_model=SectionOut)
+async def set_content_section_visibility(
+    section_id: int,
+    payload: VisibilityUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        section = content_service.set_visibility(db, section_id, payload.is_visible)
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="content.section.visibility",
+        actor_user=current_user,
+        target_type="page_section",
+        target_id=str(section.id),
+        meta={"page": section.page, "is_visible": section.is_visible},
+        request=request,
+    )
+    return section
+
+
+@router.post("/content/sections/{section_id}/duplicate", response_model=SectionOut, status_code=status.HTTP_201_CREATED)
+async def duplicate_content_section(
+    section_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        section = content_service.duplicate_section(db, section_id)
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="content.section.duplicate",
+        actor_user=current_user,
+        target_type="page_section",
+        target_id=str(section.id),
+        meta={"page": section.page, "type": section.type},
+        request=request,
+    )
+    return section
+
+
+@router.delete("/content/sections/{section_id}", response_model=MessageResponse)
+async def delete_content_section(
+    section_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        section = content_service.get_section(db, section_id)
+        page = section.page
+        content_service.delete_section(db, section_id)
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="content.section.delete",
+        actor_user=current_user,
+        target_type="page_section",
+        target_id=str(section_id),
+        meta={"page": page},
+        request=request,
+    )
+    return {"success": True, "message": "Section deleted."}
+
+
+@router.put("/content/{page}/reorder", response_model=List[SectionOut])
+async def reorder_content_sections(
+    page: str,
+    payload: ReorderRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        sections = content_service.reorder(db, page, payload.section_ids)
+    except ContentError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="content.reorder",
+        actor_user=current_user,
+        target_type="page",
+        target_id=page,
+        meta={"order": payload.section_ids},
+        request=request,
+    )
+    return sections
+
+
+# ---------------------------------------------------------------------------
+# Media uploads (Phase 2B)
+# ---------------------------------------------------------------------------
+@router.post("/media", response_model=MediaUploadOut, status_code=status.HTTP_201_CREATED)
+async def upload_media(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """Upload an image; returns a public HTTPS URL. SA only."""
+    data = await file.read()
+    try:
+        result = media_service.save_image(data, file.filename or "", file.content_type or "")
+    except MediaError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="media.upload",
+        actor_user=current_user,
+        target_type="media",
+        target_id=str(result["filename"]),
+        meta={"size": result["size"], "content_type": result["content_type"]},
+        request=request,
+    )
+    return result
+
+
+@router.get("/media", response_model=List[MediaUploadOut])
+async def list_media_files(
+    _: User = Depends(get_current_superuser),
+):
+    """List uploaded media (newest first)."""
+    return media_service.list_media()
+
+
+@router.delete("/media/{filename}", response_model=MessageResponse)
+async def delete_media_file(
+    filename: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    try:
+        media_service.delete_media(filename)
+    except MediaError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    audit_service.record(
+        db,
+        action="media.delete",
+        actor_user=current_user,
+        target_type="media",
+        target_id=filename,
+        request=request,
+    )
+    return {"success": True, "message": "Media deleted."}
